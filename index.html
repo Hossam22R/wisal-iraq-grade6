@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>بوابة مدارس براعم كربلاء</title>
+<meta name="theme-color" content="#0B1220">
+<title>بوابة مدارس براعم كربلاء الأهلية</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/common.js"></script>
@@ -11,75 +12,106 @@
 </head>
 <body>
 <section class="hero">
-  <div class="wrap">
-    <div class="frame">
-      <div class="kicker"><span class="node"></span><span id="kick"></span></div>
+  <div class="wrap hero-in">
+    <div>
+      <div class="chip-live"><span class="node"></span><span id="today"></span></div>
       <h1 id="title"></h1>
       <p id="slogan"></p>
-      <div class="grades" id="grades" aria-label="اختر الصف"></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="orb" id="orb"></div>
+  </div>
+  <div class="wrap">
+    <div class="selector" aria-label="اختر المرحلة والصف">
+      <div class="seg" id="stages"></div>
+      <div class="chips" id="grades"></div>
     </div>
   </div>
 </section>
 <nav class="topnav" aria-label="أقسام البوابة"><div class="wrap" id="nav"></div></nav>
 <main class="wrap" id="view"></main>
-<footer>© مؤسسة وصال التعليمية، إعداد: حسام الجنابي</footer>
+<footer>© مؤسسة وصال التعليمية · إعداد: حسام الجنابي</footer>
 
 <script>
-/* ============ البيانات ============ */
+/* ============ البيانات والاختيار ============ */
 const PREVIEW = /[?&]preview\b/.test(location.search);
-const D = (PREVIEW && store.get('wx-admin-draft')) || window.SCHOOL;
-let grade = store.get('wx-grade') || '';
-if(!D.grades.includes(grade)) grade = '';
-const forGrade = it => !grade || !it.grade || it.grade === grade;
-const items = k => (D[k] || []).filter(forGrade);
-const today = todayISO();
+const D = (PREVIEW && store.get(DRAFT_KEY)) || window.SCHOOL;
+let sel = store.get('wx2-sel') || {stage:'', grade:''};
+if(sel.grade && !allGrades(D).includes(sel.grade)) sel = {stage:'', grade:''};
+if(sel.stage && !D.stages.some(s => s.name === sel.stage)) sel = {stage:'', grade:''};
+const forSel = it => matches(D, it.grade, sel);
+const items = k => (D[k] || []).filter(forSel);
+const selLabel = () => sel.grade ? 'الصف ' + sel.grade : sel.stage ? 'المرحلة ' + sel.stage : 'جميع المراحل';
 
-/* ============ الرأس والتنقل ============ */
-$('#title').innerHTML = `${esc(D.school.name)}<small>${PREVIEW ? 'معاينة المسودة — لم تُنشر بعد' : 'البوابة الإلكترونية'}</small>`;
-$('#slogan').textContent = D.school.slogan || '';
-document.title = 'بوابة ' + D.school.name;
-function drawGrades(){
-  $('#grades').innerHTML = ['', ...D.grades].map(g => `<button class="${g === grade ? 'on' : ''}" data-g="${esc(g)}">${g ? esc(g) : 'كل الصفوف'}</button>`).join('');
-  $('#kick').textContent = (D.school.year || '') + '، ' + gradeLabel(grade);
+/* ============ الرأس ============ */
+const nm = D.school.name, m = nm.match(/^(.*?)\s+(الأهلية)$/);
+$('#title').innerHTML = m ? `<span class="grad">${esc(m[1])}</span><br><span class="sub">${esc(m[2])}</span>` : `<span class="grad">${esc(nm)}</span>`;
+$('#slogan').textContent = PREVIEW ? 'معاينة المسودة — لم تُنشر بعد' : (D.school.slogan || '');
+document.title = 'بوابة ' + nm;
+$('#today').textContent = fmtDate(todayISO()) + (D.school.year ? '  —  ' + D.school.year : '');
+const founded = +D.school.founded || 0, age = new Date().getFullYear() - founded;
+const STATS = [
+  founded && [founded, 'سنة التأسيس', false],
+  founded && [age, 'عاماً من العطاء', true],
+  [D.stages.length, D.stages.length === 2 ? 'مرحلتان دراسيتان' : 'مراحل دراسية', true],
+  [allGrades(D).length, 'صفاً دراسياً', true]
+].filter(Boolean);
+$('#stats').innerHTML = STATS.map(([n, l, cnt]) => `<div class="stat"><b data-n="${n}" data-c="${cnt ? 1 : 0}">${toAr(n)}</b><span>${l}</span></div>`).join('');
+if(founded) $('#orb').innerHTML = orbSVG(founded);
+/* عدّاد متحرك للأرقام */
+if(!matchMedia('(prefers-reduced-motion: reduce)').matches) $$('#stats b[data-c="1"]').forEach(b => {
+  const n = +b.dataset.n, t0 = performance.now();
+  const step = t => { const p = Math.min(1, (t - t0) / 1200); b.textContent = toAr(Math.round(n * (1 - Math.pow(1 - p, 3)))); if(p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+});
+
+function drawSel(){
+  $('#stages').innerHTML = [['', 'كل المدرسة'], ...D.stages.map(s => [s.name, 'المرحلة ' + s.name])]
+    .map(([v, l]) => `<button data-s="${esc(v)}" class="${v === sel.stage ? 'on' : ''}">${esc(l)}</button>`).join('');
+  const st = D.stages.find(s => s.name === sel.stage);
+  $('#grades').innerHTML = st ? [['', 'كل صفوف المرحلة'], ...st.grades.map(g => [g, g])]
+    .map(([v, l]) => `<button data-g="${esc(v)}" class="${v === sel.grade ? 'on' : ''}">${esc(l)}</button>`).join('') : '<span class="muted">اختر المرحلة لعرض صفوفها، أو تصفّح محتوى المدرسة كلها.</span>';
 }
-$('#grades').onclick = e => { const b = e.target.closest('[data-g]'); if(!b) return; grade = b.dataset.g; store.set('wx-grade', grade); drawGrades(); route(); };
+$('#stages').onclick = e => { const b = e.target.closest('[data-s]'); if(!b) return; sel = {stage:b.dataset.s, grade:''}; store.set('wx2-sel', sel); drawSel(); route(); };
+$('#grades').onclick = e => { const b = e.target.closest('[data-g]'); if(!b) return; sel.grade = b.dataset.g; store.set('wx2-sel', sel); drawSel(); route(); };
 $('#nav').innerHTML = `<a href="#/" data-k="home">🏠 الرئيسية</a>` + Object.entries(SECTIONS).map(([k, s]) => `<a href="#/${k}" data-k="${k}">${s.icon} ${s.label}</a>`).join('');
-drawGrades();
+drawSel();
 
-/* ============ مكوّنات البطاقات ============ */
-const tags = it => `${it.subject ? `<span class="tag">${esc(it.subject)}</span>` : ''}<span class="tag">${esc(gradeLabel(it.grade))}</span>`;
+/* ============ البطاقات ============ */
+const G = k => SECTIONS[k].glow;
+const tags = it => `${it.subject ? `<span class="tag">${esc(it.subject)}</span>` : ''}<span class="tag">${esc(audienceLabel(it.grade))}</span>`;
 const isNew = it => { const d = dayDiff(it.date); return d !== null && d <= 0 && d >= -2; };
 const linkBtn = (url, text, cls='pri') => {
   if(!url) return '';
   const ext = /^https?:/.test(url) && !url.startsWith(location.origin);
   return `<a class="btn ${cls}" href="${esc(url)}"${ext ? ' target="_blank" rel="noopener"' : ''}>${text}</a>`;
 };
+const calBox = iso => `<div class="cal"><div class="d">${fmtDate(iso, {day:'numeric'})}</div><div class="m">${fmtDate(iso, {month:'long'})}</div></div>`;
 const CARD = {
   announcements: it => `
-    <article class="card${it.urgent ? ' feat' : ''}" style="--c:${it.urgent ? '#7A1212' : 'var(--sec)'}">
+    <article class="card${it.urgent ? ' feat' : ''}" style="--g:${G('announcements')}">
       <h3>${esc(it.title)}</h3>
       <div class="meta">${it.urgent ? '<span class="tag hot">عاجل</span>' : ''}${isNew(it) ? '<span class="tag new">جديد</span>' : ''}
-        <span class="tag">${esc(gradeLabel(it.grade))}</span><span class="muted">${fmtDate(it.date)}</span></div>
+        <span class="tag">${esc(audienceLabel(it.grade))}</span><span class="muted">${fmtDate(it.date)}</span></div>
       <div class="body">${rich(it.body)}</div>
     </article>`,
   homework: it => {
     const d = dayDiff(it.due), late = d !== null && d < 0;
     const due = it.due ? `<span class="tag ${late ? 'late' : d <= 1 ? 'hot' : 'ok'}">${late ? 'انتهى موعد التسليم' : 'التسليم ' + relDay(d)}</span>` : '';
     return `
-    <article class="card" style="--c:#1F3B2D">
+    <article class="card" style="--g:${G('homework')}">
       <h3>${esc(it.title)}</h3>
       <div class="meta">${isNew(it) ? '<span class="tag new">جديد</span>' : ''}${tags(it)}${due}</div>
       <div class="body">${rich(it.body)}</div>
-      <div class="muted">أُعطي ${fmtDate(it.date)}${it.due ? '، آخر موعد ' + fmtDate(it.due) : ''}</div>
+      <div class="muted">أُعطي ${fmtDate(it.date)}${it.due ? '، وآخر موعد ' + fmtDate(it.due) : ''}</div>
       <div class="acts">${linkBtn(it.link, /#exam=/.test(it.link) ? '✏️ حلّ الواجب الآن' : 'فتح الرابط')}</div>
     </article>`;
   },
   exams: it => {
     const d = dayDiff(it.date), open = d !== null && d <= 0;
     return `
-    <article class="card" style="--c:#1E2F4A">
-      <div class="evt">
-        <div class="cal" style="--c:#1E2F4A"><div class="d">${fmtDate(it.date, {day:'numeric'})}</div><div class="m">${fmtDate(it.date, {month:'long'})}</div></div>
+    <article class="card" style="--g:${G('exams')}">
+      <div class="evt">${calBox(it.date)}
         <div style="flex:1">
           <h3>${esc(it.title)}</h3>
           <div class="meta">${tags(it)}<span class="tag ${d < 0 ? '' : d === 0 ? 'hot' : 'ok'}">${d < 0 ? 'انتهى' : relDay(d)}</span></div>
@@ -91,10 +123,9 @@ const CARD = {
     </article>`;
   },
   lessons: it => {
-    const yt = ytId(it.link);
-    const icon = {'فيديو':'🎬', 'درس تفاعلي':'🧩', 'ملف':'📄'}[it.kind] || '🔗';
+    const yt = ytId(it.link), icon = {'فيديو':'🎬', 'درس تفاعلي':'🧩', 'ملف':'📄'}[it.kind] || '🔗';
     return `
-    <article class="card" style="--c:#5B4326">
+    <article class="card" style="--g:${G('lessons')}">
       <h3>${icon} ${esc(it.title)}</h3>
       <div class="meta">${isNew(it) ? '<span class="tag new">جديد</span>' : ''}${tags(it)}${it.kind ? `<span class="tag">${esc(it.kind)}</span>` : ''}</div>
       <div class="body">${rich(it.body)}</div>
@@ -104,83 +135,84 @@ const CARD = {
   events: it => {
     const d = dayDiff(it.date);
     return `
-    <article class="card evt" style="--c:#3B2A1A">
-      <div class="cal" style="--c:#3B2A1A"><div class="d">${fmtDate(it.date, {day:'numeric'})}</div><div class="m">${fmtDate(it.date, {month:'long'})}</div></div>
+    <article class="card evt" style="--g:${G('events')}">${calBox(it.date)}
       <div style="flex:1">
         <h3>${esc(it.title)}</h3>
-        <div class="meta"><span class="tag ${d === 0 ? 'hot' : d > 0 ? 'ok' : ''}">${relDay(d)}</span>${it.place ? `<span class="tag">📍 ${esc(it.place)}</span>` : ''}<span class="muted">${fmtDate(it.date)}</span></div>
+        <div class="meta"><span class="tag ${d === 0 ? 'hot' : d > 0 ? 'ok' : ''}">${relDay(d)}</span>${it.place ? `<span class="tag">📍 ${esc(it.place)}</span>` : ''}<span class="tag">${esc(audienceLabel(it.grade))}</span></div>
+        <div class="muted">${fmtDate(it.date)}</div>
         ${it.body ? `<div class="body">${rich(it.body)}</div>` : ''}
       </div>
     </article>`;
   },
   activities: it => `
-    <article class="card" style="--c:#4A3A28">
+    <article class="card" style="--g:${G('activities')}">
       ${it.image ? `<img class="thumb" src="${esc(it.image)}" alt="${esc(it.title)}" loading="lazy">` : ''}
       <h3>${esc(it.title)}</h3>
-      <div class="meta"><span class="tag">${esc(gradeLabel(it.grade))}</span><span class="muted">${fmtDate(it.date)}</span></div>
+      <div class="meta"><span class="tag">${esc(audienceLabel(it.grade))}</span><span class="muted">${fmtDate(it.date)}</span></div>
       <div class="body">${rich(it.body)}</div>
       <div class="acts">${linkBtn(it.link, 'المزيد', '')}</div>
     </article>`
 };
+const by = (f, dir=1) => (a, b) => dir * String(a[f] || '').localeCompare(String(b[f] || ''));
 const SORT = {
-  announcements: (a, b) => (!!b.urgent - !!a.urgent) || (b.date || '').localeCompare(a.date || ''),
-  homework: (a, b) => { const la = dayDiff(a.due) < 0, lb = dayDiff(b.due) < 0; return la - lb || (la ? b.due.localeCompare(a.due) : (a.due || '').localeCompare(b.due || '')); },
-  exams: (a, b) => { const pa = dayDiff(a.date) < 0, pb = dayDiff(b.date) < 0; return pa - pb || (pa ? (b.date || '').localeCompare(a.date || '') : (a.date || '').localeCompare(b.date || '')); },
-  lessons: (a, b) => (b.date || '').localeCompare(a.date || ''),
-  events: (a, b) => (a.date || '').localeCompare(b.date || ''),
-  activities: (a, b) => (b.date || '').localeCompare(a.date || '')
+  announcements: (a, b) => (!!b.urgent - !!a.urgent) || by('date', -1)(a, b),
+  homework: (a, b) => { const la = dayDiff(a.due) < 0, lb = dayDiff(b.due) < 0; return la - lb || (la ? by('due', -1) : by('due'))(a, b); },
+  exams: (a, b) => { const pa = dayDiff(a.date) < 0, pb = dayDiff(b.date) < 0; return pa - pb || (pa ? by('date', -1) : by('date'))(a, b); },
+  lessons: by('date', -1), events: by('date'), activities: by('date', -1)
 };
 const emptyBox = t => `<div class="empty">${t}</div>`;
-const listOf = (k, arr) => arr.length ? `<div class="list">${arr.map(CARD[k]).join('')}</div>` : emptyBox(`لا توجد ${SECTIONS[k].label} ${grade ? 'للصف ' + esc(grade) : ''} حالياً.`);
+const listOf = (k, arr) => arr.length ? `<div class="list">${arr.map(CARD[k]).join('')}</div>` : emptyBox(`لا توجد ${SECTIONS[k].label} لـ${esc(selLabel())} حالياً.`);
+const head = (k, t) => `<h2 class="sec" style="--g:${G(k)}">${SECTIONS[k].icon} ${t}</h2>`;
 
 /* ============ الصفحات ============ */
 function home(){
   theme('home');
+  const upcoming = (k, f='date') => items(k).filter(x => dayDiff(x[f] || x.date) >= 0);
   const urgent = items('announcements').filter(a => a.urgent && dayDiff(a.date) >= -14).sort(SORT.announcements).slice(0, 3);
-  const hw = items('homework').filter(h => dayDiff(h.due || h.date) >= 0).sort(SORT.homework).slice(0, 4);
-  const ex = items('exams').filter(e => dayDiff(e.date) >= 0).sort(SORT.exams).slice(0, 3);
-  const ev = (D.events || []).filter(e => dayDiff(e.date) >= 0).sort(SORT.events).slice(0, 3);
+  const hw = upcoming('homework', 'due').sort(SORT.homework).slice(0, 4);
+  const ex = upcoming('exams').sort(SORT.exams).slice(0, 3);
+  const ev = upcoming('events').sort(SORT.events).slice(0, 3);
   const ann = items('announcements').filter(a => !urgent.includes(a)).sort(SORT.announcements).slice(0, 3);
   const les = items('lessons').sort(SORT.lessons).slice(0, 3);
   const count = k => k === 'contact' ? (D.staff || []).length : k === 'events' ? ev.length : items(k).length;
   return `
     ${PREVIEW ? '<div class="notice">أنت تشاهد معاينة المسودة المحفوظة في لوحة الإدارة على هذا الجهاز. لن يراها الآخرون قبل رفع ملف المحتوى.</div>' : ''}
-    ${urgent.map(a => `<div class="urgent fade"><span style="font-size:24px">📢</span><div><b>${esc(a.title)}</b><div>${rich(a.body)}</div></div></div>`).join('')}
+    ${urgent.map(a => `<div class="urgent fade"><span class="node"></span><div><b>${esc(a.title)}</b> <span class="tag" style="color:#fff">${esc(audienceLabel(a.grade))}</span><div>${rich(a.body)}</div></div></div>`).join('')}
     <div class="tiles">${Object.entries(SECTIONS).map(([k, s]) => `
-      <a class="tile fade" href="#/${k}" style="background:${s.c}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
+      <a class="tile fade" href="#/${k}" style="--c:${s.c};--g:${s.glow}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
     </div>
     <div class="cols">
-      <div><h2 class="sec" style="--sec:#1F3B2D">✏️ واجبات قريبة</h2>${hw.length ? `<div class="list">${hw.map(CARD.homework).join('')}</div>` : emptyBox('لا توجد واجبات قادمة.')}</div>
-      <div><h2 class="sec" style="--sec:#1E2F4A">📝 امتحانات قادمة</h2>${ex.length ? `<div class="list">${ex.map(CARD.exams).join('')}</div>` : emptyBox('لا توجد امتحانات قادمة.')}</div>
+      <div>${head('homework', 'واجبات قريبة')}${hw.length ? `<div class="list">${hw.map(CARD.homework).join('')}</div>` : emptyBox('لا توجد واجبات قادمة.')}</div>
+      <div>${head('exams', 'امتحانات قادمة')}${ex.length ? `<div class="list">${ex.map(CARD.exams).join('')}</div>` : emptyBox('لا توجد امتحانات قادمة.')}</div>
     </div>
     <div class="cols">
-      <div><h2 class="sec" style="--sec:#7A1212">📢 آخر التبليغات</h2>${ann.length ? `<div class="list">${ann.map(CARD.announcements).join('')}</div>` : emptyBox('لا توجد تبليغات أخرى.')}</div>
-      <div><h2 class="sec" style="--sec:#3B2A1A">🎉 المناسبات القادمة</h2>${ev.length ? `<div class="list">${ev.map(CARD.events).join('')}</div>` : emptyBox('لا توجد مناسبات قادمة.')}</div>
+      <div>${head('announcements', 'آخر التبليغات')}${ann.length ? `<div class="list">${ann.map(CARD.announcements).join('')}</div>` : emptyBox('لا توجد تبليغات أخرى.')}</div>
+      <div>${head('events', 'المناسبات القادمة')}${ev.length ? `<div class="list">${ev.map(CARD.events).join('')}</div>` : emptyBox('لا توجد مناسبات قادمة.')}</div>
     </div>
-    <h2 class="sec" style="--sec:#5B4326">🎬 أحدث الدروس</h2>${listOf('lessons', les)}`;
+    ${head('lessons', 'أحدث الدروس')}${listOf('lessons', les)}`;
 }
 function section(k){
   theme(k);
   const s = SECTIONS[k], hasSub = ['homework', 'exams', 'lessons'].includes(k);
-  const st = store.get('wx-f-' + k) || {};
+  const st = store.get('wx2-f-' + k) || {};
+  const subs = subjectsFor(D, sel.grade || (sel.stage ? STAGE_P + sel.stage : ''));
   return `
-    <h2 class="sec" style="margin-top:4px">${s.icon} ${s.label}</h2>
+    ${head(k, s.label + ` <span class="muted" style="font-weight:700">· ${esc(selLabel())}</span>`)}
     <div class="filters">
-      <input id="q" placeholder="ابحث في ${s.label}…" value="${esc(st.q || '')}">
-      ${hasSub ? `<select id="sub"><option value="">كل المواد</option>${D.subjects.map(x => `<option${st.sub === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>` : '<span></span>'}
+      <input id="q" placeholder="ابحث في ${s.label}…" value="${esc(st.q || '')}" aria-label="بحث">
+      ${hasSub ? `<select id="sub" aria-label="المادة"><option value="">كل المواد</option>${subs.map(x => `<option${st.sub === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>` : '<span></span>'}
     </div>
     <div id="res"></div>`;
 }
 function fillSection(k){
   const run = () => {
-    const q = ($('#q').value || '').trim(), sub = $('#sub')?.value || '';
-    store.set('wx-f-' + k, {q, sub});
-    let arr = (k === 'events' ? (D.events || []) : items(k)).filter(it => (!sub || it.subject === sub) && (!q || (it.title + ' ' + (it.body || '')).includes(q)));
-    arr = arr.slice().sort(SORT[k]);
+    const q = $('#q').value.trim(), sub = $('#sub')?.value || '';
+    store.set('wx2-f-' + k, {q, sub});
+    const arr = items(k).filter(it => (!sub || it.subject === sub) && (!q || (it.title + ' ' + (it.body || '')).includes(q))).sort(SORT[k]);
     if(k === 'events'){
       const up = arr.filter(e => dayDiff(e.date) >= 0), past = arr.filter(e => dayDiff(e.date) < 0).reverse();
       $('#res').innerHTML = (up.length ? `<div class="list">${up.map(CARD.events).join('')}</div>` : emptyBox('لا توجد مناسبات قادمة.')) +
-        (past.length ? `<h2 class="sec">مناسبات سابقة</h2><div class="list" style="opacity:.8">${past.map(CARD.events).join('')}</div>` : '');
+        (past.length ? `${head('events', 'مناسبات سابقة')}<div class="list" style="opacity:.75">${past.map(CARD.events).join('')}</div>` : '');
     } else $('#res').innerHTML = listOf(k, arr);
   };
   $('#q').oninput = run; if($('#sub')) $('#sub').onchange = run; run();
@@ -191,60 +223,64 @@ function lesson(id){
   if(!it) return emptyBox('الدرس غير موجود.');
   return `
     <a class="btn" href="#/lessons">→ كل الدروس</a>
-    <h2 class="sec">${esc(it.title)}</h2>
+    ${head('lessons', esc(it.title))}
     <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId(it.link)}" title="${esc(it.title)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
-    <div class="card" style="margin-top:12px"><div class="meta">${tags(it)}</div><div class="body">${rich(it.body)}</div></div>`;
+    <div class="card" style="margin-top:14px;--g:${G('lessons')}"><div class="meta">${tags(it)}</div><div class="body">${rich(it.body)}</div></div>`;
 }
 
 /* ============ التواصل الخاص ============ */
+const LEAD = /المشرف|مدير/;
+const reach = s => s.whatsapp || s.telegram;
 function contact(){
   theme('contact');
-  const sc = D.school;
-  const staff = (D.staff || []).filter(s => !grade || !s.grades || s.grades.includes(grade));
-  const reach = s => s.whatsapp || s.telegram;
+  const sc = D.school, st = sel.stage || stageOf(D, sel.grade);
+  const staff = (D.staff || []).filter(s => !st || !s.stage || s.stage === st);
+  const lead = staff.filter(s => LEAD.test(s.role)), others = staff.filter(s => !LEAD.test(s.role));
+  const person = s => `
+    <div class="card" style="--g:${G('contact')}">
+      <h3>${esc(s.name)}</h3>
+      <div class="meta"><span class="tag">${esc(s.role)}</span>${s.stage ? `<span class="tag">المرحلة ${esc(s.stage)}</span>` : ''}${s.subjects ? `<span class="tag">${esc(s.subjects)}</span>` : ''}${s.grades ? `<span class="tag">${esc(s.grades)}</span>` : ''}</div>
+      ${reach(s) ? '' : '<div class="muted">لم يُضف رقم تواصل بعد.</div>'}
+    </div>`;
   return `
-    <h2 class="sec" style="margin-top:4px">💬 التواصل مع المدرسة</h2>
-    <div class="cols">
+    ${head('contact', 'التواصل مع المدرسة')}
+    ${lead.length ? `<div class="lead">${lead.map(s => `
+      <div class="card" style="--g:${G('contact')}"><div class="av">${/المشرف/.test(s.role) ? '🛡️' : '🎓'}</div>
+        <h3>${esc(s.name)}</h3><div class="muted">${esc(s.name === s.role ? (s.stage ? 'المرحلة ' + s.stage : 'جميع المراحل') : s.role)}</div></div>`).join('')}</div>` : ''}
+    <div class="cols" style="margin-top:20px">
       <div class="panel">
-        <h3>مراسلة خاصة</h3>
-        <p class="muted">تُكتب الرسالة هنا ثم تُرسل مباشرة إلى المعلم أو الإدارة عبر واتساب أو تلكرام، ولا يحتفظ الموقع بأي بيانات.</p>
+        <h3>🔒 مراسلة خاصة</h3>
+        <p class="muted">تُكتب الرسالة هنا ثم تُرسل مباشرة إلى الجهة المختارة عبر واتساب أو تلكرام، ولا يحتفظ الموقع بأي بيانات.</p>
         <div class="grid">
-          <div class="full"><label>إلى</label><select id="to">${staff.filter(reach).map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.subjects ? ' — ' + esc(s.subjects) : ''}</option>`).join('') || '<option value="">لم تُضف أرقام تواصل بعد</option>'}</select></div>
-          <div><label>اسم ولي الأمر</label><input id="pn" autocomplete="name"></div>
-          <div><label>اسم التلميذ</label><input id="sn"></div>
-          <div><label>الصف</label><select id="sg">${D.grades.map(g => `<option${g === grade ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
-          <div><label>الشعبة</label><input id="ss" placeholder="مثال: أ"></div>
-          <div class="full"><label>الرسالة</label><textarea id="msg"></textarea></div>
+          <div class="full"><label for="to">إلى</label><select id="to">${staff.filter(reach).map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.subjects ? ' — ' + esc(s.subjects) : ''}</option>`).join('') || '<option value="">لم تُضف أرقام تواصل بعد</option>'}</select></div>
+          <div><label for="pn">اسم ولي الأمر</label><input id="pn" autocomplete="name"></div>
+          <div><label for="sn">اسم التلميذ أو الطالب</label><input id="sn"></div>
+          <div><label for="sg">الصف</label><select id="sg">${audienceOptions(D, sel.grade, {all:false, stages:false})}</select></div>
+          <div><label for="ss">الشعبة</label><input id="ss" placeholder="مثال: أ"></div>
+          <div class="full"><label for="msg">الرسالة</label><textarea id="msg"></textarea></div>
         </div>
         <div id="err"></div>
         <div class="row" style="margin-top:12px"><button class="pri" id="send">إرسال الرسالة</button></div>
       </div>
       <div>
-        <div class="card" style="--c:#1E2F4A">
+        <div class="card" style="--g:${G('contact')}">
           <h3>🏫 ${esc(sc.name)}</h3>
-          <div class="body">${sc.address ? '📍 ' + esc(sc.address) + '<br>' : ''}${sc.phone ? '☎️ <a href="tel:' + esc(sc.phone) + '" dir="ltr">' + esc(toAr(sc.phone)) + '</a><br>' : ''}${sc.hours ? '🕘 أوقات الدوام: ' + esc(sc.hours) : ''}</div>
+          <div class="body">${sc.founded ? '✨ تأسست عام ' + toAr(sc.founded) + '<br>' : ''}${sc.address ? '📍 ' + esc(sc.address) + '<br>' : ''}${sc.phone ? '☎️ <a href="tel:' + esc(sc.phone) + '" dir="ltr">' + esc(toAr(sc.phone)) + '</a><br>' : ''}${sc.hours ? '🕘 أوقات الدوام: ' + esc(sc.hours) : ''}</div>
         </div>
-        <h2 class="sec">الكادر</h2>
-        <div class="list">${staff.map(s => `
-          <div class="card" style="--c:#1E2F4A">
-            <h3>${esc(s.name)}</h3>
-            <div class="meta"><span class="tag">${esc(s.role)}</span>${s.subjects ? `<span class="tag">${esc(s.subjects)}</span>` : ''}${s.grades ? `<span class="tag">الصفوف: ${esc(s.grades)}</span>` : ''}</div>
-            ${reach(s) ? '' : '<div class="muted">لم يُضف رقم تواصل بعد.</div>'}
-          </div>`).join('') || emptyBox('لم يُضف الكادر بعد.')}</div>
+        <h2 class="sec" style="--g:${G('contact')}">الكادر التدريسي</h2>
+        <div class="list">${others.map(person).join('') || emptyBox('لم يُضف الكادر التدريسي بعد.')}</div>
       </div>
     </div>`;
 }
 function wireContact(){
   $('#send').onclick = async () => {
-    const s = (D.staff || []).find(x => x.id === $('#to').value);
-    const v = id => $(id).value.trim();
-    if(!s) return $('#err').innerHTML = '<div class="alert">لا توجد جهة تواصل متاحة.</div>';
+    const s = (D.staff || []).find(x => x.id === $('#to').value), v = id => $(id).value.trim();
+    if(!s) return $('#err').innerHTML = '<div class="alert">لا توجد جهة تواصل متاحة بعد.</div>';
     if(!v('#pn') || !v('#sn') || !v('#msg')) return $('#err').innerHTML = '<div class="alert">اكتب اسمك واسم التلميذ ونص الرسالة.</div>';
     $('#err').innerHTML = '';
-    const text = `السلام عليكم ${s.name}\nأنا ${v('#pn')}، ولي أمر التلميذ/ة ${v('#sn')} — الصف ${$('#sg').value}${v('#ss') ? ' / ' + v('#ss') : ''}\n\n${v('#msg')}\n\n(مرسلة من بوابة ${D.school.name})`;
-    if(s.whatsapp){
-      window.open('https://wa.me/' + s.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
-    } else {
+    const text = `السلام عليكم ${s.name}\nأنا ${v('#pn')}، ولي أمر ${v('#sn')} — الصف ${$('#sg').value}${v('#ss') ? ' / ' + v('#ss') : ''}\n\n${v('#msg')}\n\n(مرسلة من بوابة ${D.school.name})`;
+    if(s.whatsapp) window.open('https://wa.me/' + s.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+    else {
       try{ await navigator.clipboard.writeText(text); toast('نُسخت الرسالة، الصقها في تلكرام'); }catch(_){}
       window.open('https://t.me/' + s.telegram.replace(/^@/, ''), '_blank', 'noopener');
     }
