@@ -101,3 +101,16 @@ function orbSVG(year){
     <text x="150" y="182" text-anchor="middle" class="yr">${toAr(year)}</text>
   </svg>`;
 }
+
+/* تأكيد داخل الصفحة بدل نافذة المتصفح (تعمل في كل المتصفحات وداخل التطبيقات) */
+function ask(msg, okText='تأكيد'){
+  return new Promise(res => {
+    const w = document.createElement('div'); w.className = 'modal';
+    w.innerHTML = `<div class="mbox" role="alertdialog" aria-modal="true"><p>${esc(msg)}</p><div class="row"><button class="pri" data-a="1">${esc(okText)}</button><button data-a="0">إلغاء</button></div></div>`;
+    document.body.appendChild(w); w.querySelector('.pri').focus();
+    const done = v => { w.remove(); document.removeEventListener('keydown', key); res(v); };
+    const key = e => { if(e.key === 'Escape') done(false); };
+    document.addEventListener('keydown', key);
+    w.onclick = e => { const b = e.target.closest('[data-a]'); if(b) done(b.dataset.a === '1'); else if(e.target === w) done(false); };
+  });
+}

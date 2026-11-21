@@ -74,7 +74,7 @@ function drawSel(){
 }
 $('#stages').onclick = e => { const b = e.target.closest('[data-s]'); if(!b) return; sel = {stage:b.dataset.s, grade:''}; store.set('wx2-sel', sel); drawSel(); route(); };
 $('#grades').onclick = e => { const b = e.target.closest('[data-g]'); if(!b) return; sel.grade = b.dataset.g; store.set('wx2-sel', sel); drawSel(); route(); };
-$('#nav').innerHTML = `<a href="#/" data-k="home">🏠 الرئيسية</a>` + Object.entries(SECTIONS).map(([k, s]) => `<a href="#/${k}" data-k="${k}">${s.icon} ${s.label}</a>`).join('');
+$('#nav').innerHTML = `<a href="#home" data-k="home">🏠 الرئيسية</a>` + Object.entries(SECTIONS).map(([k, s]) => `<a href="#${k}" data-k="${k}">${s.icon} ${s.label}</a>`).join('');
 drawSel();
 
 /* ============ البطاقات ============ */
@@ -129,7 +129,7 @@ const CARD = {
       <h3>${icon} ${esc(it.title)}</h3>
       <div class="meta">${isNew(it) ? '<span class="tag new">جديد</span>' : ''}${tags(it)}${it.kind ? `<span class="tag">${esc(it.kind)}</span>` : ''}</div>
       <div class="body">${rich(it.body)}</div>
-      <div class="acts">${yt ? `<a class="btn pri" href="#/lesson/${esc(it.id)}">▶ شاهد الدرس</a>` : linkBtn(it.link, 'افتح الدرس')}</div>
+      <div class="acts">${yt ? `<a class="btn pri" href="#lesson-${esc(it.id)}">▶ شاهد الدرس</a>` : linkBtn(it.link, 'افتح الدرس')}</div>
     </article>`;
   },
   events: it => {
@@ -179,7 +179,7 @@ function home(){
     ${PREVIEW ? '<div class="notice">أنت تشاهد معاينة المسودة المحفوظة في لوحة الإدارة على هذا الجهاز. لن يراها الآخرون قبل رفع ملف المحتوى.</div>' : ''}
     ${urgent.map(a => `<div class="urgent fade"><span class="node"></span><div><b>${esc(a.title)}</b> <span class="tag" style="color:#fff">${esc(audienceLabel(a.grade))}</span><div>${rich(a.body)}</div></div></div>`).join('')}
     <div class="tiles">${Object.entries(SECTIONS).map(([k, s]) => `
-      <a class="tile fade" href="#/${k}" style="--c:${s.c};--g:${s.glow}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
+      <a class="tile fade" href="#${k}" style="--c:${s.c};--g:${s.glow}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
     </div>
     <div class="cols">
       <div>${head('homework', 'واجبات قريبة')}${hw.length ? `<div class="list">${hw.map(CARD.homework).join('')}</div>` : emptyBox('لا توجد واجبات قادمة.')}</div>
@@ -222,7 +222,7 @@ function lesson(id){
   const it = (D.lessons || []).find(l => l.id === id);
   if(!it) return emptyBox('الدرس غير موجود.');
   return `
-    <a class="btn" href="#/lessons">→ كل الدروس</a>
+    <a class="btn" href="#lessons">→ كل الدروس</a>
     ${head('lessons', esc(it.title))}
     <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId(it.link)}" title="${esc(it.title)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
     <div class="card" style="margin-top:14px;--g:${G('lessons')}"><div class="meta">${tags(it)}</div><div class="body">${rich(it.body)}</div></div>`;
@@ -279,21 +279,23 @@ function wireContact(){
     if(!v('#pn') || !v('#sn') || !v('#msg')) return $('#err').innerHTML = '<div class="alert">اكتب اسمك واسم التلميذ ونص الرسالة.</div>';
     $('#err').innerHTML = '';
     const text = `السلام عليكم ${s.name}\nأنا ${v('#pn')}، ولي أمر ${v('#sn')} — الصف ${$('#sg').value}${v('#ss') ? ' / ' + v('#ss') : ''}\n\n${v('#msg')}\n\n(مرسلة من بوابة ${D.school.name})`;
-    if(s.whatsapp) window.open('https://wa.me/' + s.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
-    else {
-      try{ await navigator.clipboard.writeText(text); toast('نُسخت الرسالة، الصقها في تلكرام'); }catch(_){}
-      window.open('https://t.me/' + s.telegram.replace(/^@/, ''), '_blank', 'noopener');
-    }
+    const url = s.whatsapp ? 'https://wa.me/' + s.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(text) : 'https://t.me/' + s.telegram.replace(/^@/, '');
+    if(!s.whatsapp){ try{ await navigator.clipboard.writeText(text); toast('نُسخت الرسالة، الصقها في تلكرام'); }catch(_){} }
+    /* رابط حقيقي يضغطه ولي الأمر، فيعمل في كل المتصفحات والتطبيقات */
+    $('#err').innerHTML = `<div class="notice">الرسالة جاهزة. اضغط الزر لفتح ${s.whatsapp ? 'واتساب' : 'تلكرام'} وإرسالها إلى ${esc(s.name)}.</div>
+      <a class="btn pri" href="${esc(url)}" target="_blank" rel="noopener">${s.whatsapp ? 'فتح واتساب وإرسال الرسالة' : 'فتح تلكرام'}</a>`;
   };
 }
 
 /* ============ التوجيه ============ */
 function route(){
-  const [, k = '', id] = location.hash.match(/^#\/?([\w-]*)\/?(.*)$/) || [];
+  /* روابط بسيطة مثل #homework و #lesson-l1 (والصيغة القديمة #/homework ما زالت تعمل) */
+  const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+  const [k, id] = h.startsWith('lesson') ? ['lesson', h.replace(/^lesson[-/]/, '')] : [h.split('/')[0], ''];
   $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons')));
   const v = $('#view');
   if(k === 'contact'){ v.innerHTML = contact(); wireContact(); }
-  else if(k === 'lesson') v.innerHTML = lesson(decodeURIComponent(id));
+  else if(k === 'lesson') v.innerHTML = lesson(id);
   else if(CARD[k]){ v.innerHTML = section(k); fillSection(k); }
   else v.innerHTML = home();
   v.classList.remove('fade'); void v.offsetWidth; v.classList.add('fade');

@@ -127,7 +127,7 @@ function wireList(k){
   $('#add') && ($('#add').onclick = () => { editing = {k, id:null}; draw(); $('#form [data-f]')?.focus(); });
   $$('[data-ed]').forEach(b => b.onclick = () => { editing = {k, id:b.dataset.ed}; draw(); $('#form').scrollIntoView({block:'start'}); });
   $$('[data-cp]').forEach(b => b.onclick = () => { const c = {...arr.find(x => x.id === b.dataset.cp), id:uid()}; if(c.title) c.title += ' (نسخة)'; arr.push(c); save(); editing = {k, id:c.id}; draw(); });
-  $$('[data-rm]').forEach(b => b.onclick = () => { const it = arr.find(x => x.id === b.dataset.rm); if(confirm(`حذف «${it.title || it.name}»؟`)){ arr.splice(arr.indexOf(it), 1); save(); draw(); } });
+  $$('[data-rm]').forEach(b => b.onclick = () => { const it = arr.find(x => x.id === b.dataset.rm); ask(`حذف «${it.title || it.name}»؟`, 'حذف').then(ok => { if(ok){ arr.splice(arr.indexOf(it), 1); save(); draw(); } }); });
   if(!$('#form')) return;
   /* تتغير قائمة المواد حسب مرحلة الصف المختار */
   const g = $('#form [data-f=grade]'), sub = $('#form [data-f=subject]');
@@ -223,7 +223,7 @@ function wirePublish(){
       D = o; save(); draw(); toast('تم فتح الملف');
     }catch(_){ toast('الملف غير صالح'); }
   };
-  $('#reset').onclick = () => { if(confirm('ستُحذف كل التعديلات غير المنشورة. متأكد؟')){ D = JSON.parse(LIVE); store.del(DRAFT_KEY); store.set(BASE_KEY, sig(LIVE)); status(); draw(); } };
+  $('#reset').onclick = () => { ask('ستُحذف كل التعديلات غير المنشورة. متأكد؟', 'نعم، احذف المسودة').then(ok => { if(ok){ D = JSON.parse(LIVE); store.del(DRAFT_KEY); store.set(BASE_KEY, sig(LIVE)); status(); draw(); } }); };
 }
 
 function draw(){
