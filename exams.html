@@ -149,7 +149,7 @@ const totalMarks = ex => ex.qs.reduce((s,q) => s + (+q.m || 0), 0);
 /* ============ الواجهة الرئيسية ============ */
 function setHeader(sub, tools=''){ $('#hsub').textContent = sub; $('#htools').innerHTML = tools; }
 function home(){
-  setHeader('مدارس براعم كربلاء');
+  setHeader('مدارس براعم كربلاء', `<a href="index.html"><button>بوابة المدرسة</button></a>`);
   app.innerHTML = `
     <h2>مرحباً بكم في الامتحانات الإلكترونية</h2>
     <p>يُعدّ المعلم الامتحان هنا ثم يرسل رابطه إلى التلاميذ، فيجيب التلميذ ويحصل على درجته وورقة نتيجته فوراً.</p>
@@ -174,7 +174,7 @@ function home(){
 
 /* ============ محرّر المعلم ============ */
 function editor(){
-  setHeader('وضع المعلم، إعداد الامتحان', `<button id="hHome">الرئيسية</button>`);
+  setHeader('وضع المعلم، إعداد الامتحان', `<a href="index.html"><button>بوابة المدرسة</button></a><button id="hHome">الرئيسية</button>`);
   $('#hHome').onclick = () => { location.hash = ''; home(); };
   app.innerHTML = `
     <h2>إعداد الامتحان</h2>

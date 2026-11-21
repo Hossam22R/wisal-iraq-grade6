@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>لوحة إدارة البوابة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/common.js"></script>
+<script src="data/content.js"></script>
+<style>
+.hero{padding:18px 0 20px}
+.hero h1{font-size:clamp(28px,5vw,44px)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.item{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.item .t{font-weight:700}
+.form{border:3px double var(--sec);background:#fff;border-radius:16px;padding:16px;margin-bottom:14px}
+.check{display:flex;gap:8px;align-items:center;font-size:16px;color:var(--ink)}
+.check input{width:20px;height:20px;accent-color:var(--sec)}
+.state{font-weight:700;padding:4px 12px;border-radius:20px;font-size:14px}
+.state.dirty{background:var(--yellow);border:1px solid var(--brown2)}
+.state.clean{background:var(--olive);border:1px solid var(--green);color:var(--green)}
+ol li{margin:4px 0;line-height:1.8}
+</style>
+</head>
+<body>
+<section class="hero">
+  <div class="wrap"><div class="frame">
+    <div class="kicker"><span class="node"></span>للإدارة فقط</div>
+    <h1>لوحة إدارة البوابة</h1>
+    <p>أضف المحتوى وعدّله هنا، ثم نزّل ملف المحتوى وارفعه إلى المستودع لينشر للجميع.</p>
+  </div></div>
+</section>
+<nav class="topnav"><div class="wrap" id="nav"></div></nav>
+<main class="wrap">
+  <div class="panel" style="margin-bottom:16px">
+    <div class="bar">
+      <span id="state" class="state"></span>
+      <div class="row">
+        <a class="btn" href="index.html?preview=1" target="_blank">👁 معاينة البوابة</a>
+        <a class="btn" href="exams.html" target="_blank">📝 منشئ الامتحانات والواجبات</a>
+        <button class="pri" id="dl">⬇ تنزيل ملف المحتوى</button>
+      </div>
+    </div>
+    <div id="warn"></div>
+  </div>
+  <div id="view"></div>
+</main>
+<footer>© مؤسسة وصال التعليمية، إعداد: حسام الجنابي</footer>
+
+<script>
+const LIVE = JSON.stringify(window.SCHOOL);
+const sig = s => { let h = 0; for(const c of s) h = (h*31 + c.charCodeAt(0)) | 0; return h; };
+let D = store.get('wx-admin-draft') || JSON.parse(LIVE);
+let tab = store.get('wx-admin-tab') || 'announcements';
+let editing = null; // {k, id|null}
+
+/* حقول كل قسم: [المفتاح، التسمية، النوع، مطلوب] */
+const LINK_HINT = 'رابط كامل يبدأ بـ https، أو مسار ملف داخل الموقع';
+const SCHEMA = {
+  announcements:[['title','عنوان التبليغ','text',1],['date','التاريخ','date',1],['grade','الصف','grade'],['urgent','تبليغ عاجل (يظهر بالأحمر أعلى الرئيسية)','check'],['body','نص التبليغ','textarea',1]],
+  homework:[['title','عنوان الواجب','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['date','تاريخ الإعطاء','date',1],['due','آخر موعد للتسليم','date'],['body','تفاصيل الواجب','textarea',1],['link','رابط واجب تفاعلي (اختياري) — أنشئه من «منشئ الامتحانات» والصقه هنا','url']],
+  exams:[['title','عنوان الامتحان','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['date','تاريخ الامتحان (يُفتح الرابط في هذا اليوم)','date',1],['body','ملاحظات ومفردات الامتحان','textarea'],['link','رابط الامتحان الإلكتروني (اختياري)','url']],
+  lessons:[['title','عنوان الدرس','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['kind','نوع الدرس','select:فيديو|درس تفاعلي|ملف|رابط'],['date','تاريخ النشر','date',1],['body','وصف مختصر','textarea'],['link','رابط الدرس (يوتيوب يُعرض داخل البوابة)','url',1]],
+  events:[['title','اسم المناسبة','text',1],['date','التاريخ','date',1],['place','المكان','text'],['body','التفاصيل','textarea']],
+  activities:[['title','عنوان النشاط','text',1],['date','التاريخ','date',1],['grade','الصف','grade'],['body','وصف النشاط','textarea',1],['image','رابط صورة (اختياري) — لا تنشر صور التلاميذ إلا بموافقة أوليائهم','url'],['link','رابط إضافي (اختياري)','url']],
+  staff:[['name','الاسم أو الجهة','text',1],['role','الصفة','select:معلم|معلمة|الإدارة|المرشد التربوي'],['subjects','المواد','text'],['grades','الصفوف (اتركه فارغاً لجميع الصفوف)','text'],['whatsapp','رقم واتساب بالصيغة الدولية، مثل 9647XXXXXXXXX','tel'],['telegram','اسم مستخدم تلكرام (اختياري)','text']]
+};
+const TABS = {...Object.fromEntries(Object.entries(SECTIONS).filter(([k]) => k !== 'contact').map(([k, s]) => [k, s.icon + ' ' + s.label])), staff:'💬 الكادر والتواصل', settings:'⚙️ الإعدادات', publish:'🚀 النشر'};
+
+function save(){
+  if(store.get('wx-admin-draft') === null) store.set('wx-admin-base', sig(LIVE));
+  store.set('wx-admin-draft', D);
+  status();
+}
+function status(){
+  const dirty = JSON.stringify(D) !== LIVE;
+  $('#state').className = 'state ' + (dirty ? 'dirty' : 'clean');
+  $('#state').textContent = dirty ? 'لديك تعديلات لم تُنشر بعد' : 'المسودة مطابقة للمنشور';
+  const stale = store.get('wx-admin-base') !== null && store.get('wx-admin-base') !== sig(LIVE) && dirty;
+  $('#warn').innerHTML = stale ? '<div class="alert">تغيّر المحتوى المنشور منذ بدأت هذه المسودة (ربما عُدّل من جهاز آخر). إن نشرت مسودتك فستحلّ محلّه. لبدء مسودة جديدة من المنشور استخدم «التراجع إلى المنشور» في قسم النشر.</div>' : '';
+}
+function drawNav(){
+  $('#nav').innerHTML = Object.entries(TABS).map(([k, l]) => `<a href="#" data-k="${k}" class="${k === tab ? 'on' : ''}">${l}</a>`).join('');
+}
+$('#nav').onclick = e => { const a = e.target.closest('[data-k]'); if(!a) return; e.preventDefault(); tab = a.dataset.k; editing = null; store.set('wx-admin-tab', tab); draw(); };
+
+/* ============ القوائم والنماذج ============ */
+function field([k, l, type, req], v){
+  const r = req ? ' <span style="color:var(--red)">*</span>' : '';
+  if(type === 'check') return `<div class="full"><label class="check"><input type="checkbox" data-f="${k}" ${v ? 'checked' : ''}> ${l}</label></div>`;
+  if(type === 'textarea') return `<div class="full"><label>${l}${r}</label><textarea data-f="${k}">${esc(v)}</textarea></div>`;
+  if(type === 'grade') return `<div><label>${l}${r}</label><select data-f="${k}">${req ? '' : '<option value="">جميع الصفوف</option>'}${D.grades.map(g => `<option${g === v ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>`;
+  if(type === 'subject') return `<div><label>${l}${r}</label><select data-f="${k}">${D.subjects.map(s => `<option${s === v ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></div>`;
+  if(type.startsWith('select:')) return `<div><label>${l}${r}</label><select data-f="${k}">${type.slice(7).split('|').map(o => `<option${o === v ? ' selected' : ''}>${o}</option>`).join('')}</select></div>`;
+  const full = type === 'url' || k === 'title' ? ' class="full"' : '';
+  return `<div${full}><label>${l}${r}</label><input type="${type === 'url' ? 'text' : type}" data-f="${k}" value="${esc(v)}" ${type === 'url' || type === 'tel' ? 'dir="ltr"' : ''} ${type === 'url' ? `placeholder="${LINK_HINT}"` : ''}></div>`;
+}
+function summary(k, it){
+  const bits = [it.grade && 'الصف ' + it.grade, it.subject, it.date && fmtDate(it.date, {day:'numeric', month:'long', year:'numeric'}), it.role, it.urgent && 'عاجل'].filter(Boolean);
+  return `<span class="t">${esc(it.title || it.name)}</span> <span class="muted">${esc(bits.join(' ، '))}</span>`;
+}
+function listTab(k){
+  const arr = D[k] || (D[k] = []);
+  const ed = editing && editing.k === k ? (editing.id ? arr.find(x => x.id === editing.id) : {}) : null;
+  const sorted = arr.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return `
+    <div class="bar"><h2 class="sec" style="margin:0">${TABS[k]}</h2>${ed ? '' : '<button class="pri" id="add">+ إضافة</button>'}</div>
+    ${ed ? `<div class="form" id="form">
+      <h3>${editing.id ? 'تعديل' : 'إضافة جديدة'}</h3>
+      <div class="grid">${SCHEMA[k].map(f => field(f, ed[f[0]] ?? (f[2] === 'date' && f[0] === 'date' ? todayISO() : ''))).join('')}</div>
+      <div id="ferr"></div>
+      <div class="row" style="margin-top:12px"><button class="pri" id="ok">حفظ</button><button id="cancel">إلغاء</button></div>
+    </div>` : ''}
+    <div class="list">${sorted.map(it => `
+      <div class="card item"><div>${summary(k, it)}</div>
+        <div class="row"><button class="sm" data-ed="${esc(it.id)}">تعديل</button><button class="sm" data-cp="${esc(it.id)}">نسخ</button><button class="sm warn" data-rm="${esc(it.id)}">حذف</button></div>
+      </div>`).join('') || '<div class="empty">لا يوجد شيء بعد. اضغط «إضافة».</div>'}</div>`;
+}
+function wireList(k){
+  const arr = D[k];
+  $('#add') && ($('#add').onclick = () => { editing = {k, id:null}; draw(); $('#form [data-f]')?.focus(); });
+  $$('[data-ed]').forEach(b => b.onclick = () => { editing = {k, id:b.dataset.ed}; draw(); $('#form').scrollIntoView({block:'start'}); });
+  $$('[data-cp]').forEach(b => b.onclick = () => { const it = arr.find(x => x.id === b.dataset.cp); const c = {...it, id:uid()}; if(c.title) c.title += ' (نسخة)'; arr.push(c); save(); editing = {k, id:c.id}; draw(); });
+  $$('[data-rm]').forEach(b => b.onclick = () => { const it = arr.find(x => x.id === b.dataset.rm); if(confirm(`حذف «${it.title || it.name}»؟`)){ arr.splice(arr.indexOf(it), 1); save(); draw(); } });
+  if(!$('#form')) return;
+  $('#cancel').onclick = () => { editing = null; draw(); };
+  $('#ok').onclick = () => {
+    const o = {};
+    $$('#form [data-f]').forEach(el => o[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value.trim());
+    const miss = SCHEMA[k].find(([f, , , req]) => req && !o[f]);
+    if(miss) return $('#ferr').innerHTML = `<div class="alert">الحقل «${miss[1].split(' (')[0].split(' —')[0]}» مطلوب.</div>`;
+    if(o.due && o.date && o.due < o.date) return $('#ferr').innerHTML = '<div class="alert">آخر موعد للتسليم قبل تاريخ الإعطاء.</div>';
+    const bad = ['link', 'image'].find(f => o[f] && /\s/.test(o[f]));
+    if(bad) return $('#ferr').innerHTML = '<div class="alert">الرابط يحتوي على مسافات، تأكد من نسخه كاملاً.</div>';
+    if(editing.id) Object.assign(arr.find(x => x.id === editing.id), o); else arr.push({id:uid(), ...o});
+    editing = null; save(); draw(); toast('تم الحفظ في المسودة');
+  };
+}
+
+/* ============ الإعدادات ============ */
+function settingsTab(){
+  const s = D.school;
+  const f = (k, l, wide) => `<div${wide ? ' class="full"' : ''}><label>${l}</label><input data-s="${k}" value="${esc(s[k])}"></div>`;
+  return `
+    <h2 class="sec" style="margin-top:0">⚙️ إعدادات المدرسة</h2>
+    <div class="panel"><div class="grid">
+      ${f('name', 'اسم المدرسة', 1)}${f('slogan', 'العبارة التعريفية', 1)}${f('year', 'العام الدراسي')}${f('hours', 'أوقات الدوام')}${f('address', 'العنوان')}${f('phone', 'هاتف المدرسة')}
+      <div><label>الصفوف (صف في كل سطر)</label><textarea id="gr">${esc(D.grades.join('\n'))}</textarea></div>
+      <div><label>المواد (مادة في كل سطر)</label><textarea id="sb" style="min-height:200px">${esc(D.subjects.join('\n'))}</textarea></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="sv">حفظ الإعدادات</button></div></div>`;
+}
+function wireSettings(){
+  $('#sv').onclick = () => {
+    $$('[data-s]').forEach(el => D.school[el.dataset.s] = el.value.trim());
+    const lines = id => [...new Set($(id).value.split('\n').map(x => x.trim()).filter(Boolean))];
+    if(!lines('#gr').length || !lines('#sb').length) return toast('أضف صفاً ومادة واحدة على الأقل');
+    D.grades = lines('#gr'); D.subjects = lines('#sb'); save(); toast('حُفظت الإعدادات');
+  };
+}
+
+/* ============ النشر ============ */
+const fileText = () => '/* محتوى بوابة المدرسة — يُنشأ هذا الملف من لوحة الإدارة (admin.html) ثم يُرفع مكان القديم */\nwindow.SCHOOL = ' + JSON.stringify(D, null, 1) + ';\n';
+function download(){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([fileText()], {type:'text/javascript'}));
+  a.download = 'content.js'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#dl').onclick = download;
+function publishTab(){
+  return `
+    <h2 class="sec" style="margin-top:0">🚀 نشر التعديلات للجميع</h2>
+    <div class="panel">
+      <p>كل ما تضيفه في هذه اللوحة يُحفظ على هذا الجهاز فقط. لينشر للتلاميذ وأولياء الأمور:</p>
+      <ol>
+        <li>اضغط <b>«تنزيل ملف المحتوى»</b> فينزل ملف اسمه <code>content.js</code>.</li>
+        <li>افتح مستودع الموقع في GitHub، ثم مجلد <code>data</code>.</li>
+        <li>اختر <b>Add file ← Upload files</b> وارفع الملف <code>content.js</code> (يحلّ محلّ القديم).</li>
+        <li>اضغط <b>Commit changes</b>. يظهر التحديث في الموقع خلال دقائق.</li>
+      </ol>
+      <div class="row" style="margin-top:10px"><button class="pri" id="dl2">⬇ تنزيل ملف المحتوى</button></div>
+      <h3 style="margin-top:20px">أدوات أخرى</h3>
+      <div class="row">
+        <button id="imp">فتح ملف محتوى من الجهاز</button>
+        <button class="warn" id="reset">التراجع إلى المنشور (حذف المسودة)</button>
+        <input type="file" id="file" accept=".js,.json" hidden>
+      </div>
+      <p class="muted">لا تحتاج هذه اللوحة كلمة مرور لأنها لا تنشر شيئاً بنفسها؛ النشر يتم فقط بحساب GitHub الخاص بالمدرسة.</p>
+    </div>`;
+}
+function wirePublish(){
+  $('#dl2').onclick = download;
+  $('#imp').onclick = () => $('#file').click();
+  $('#file').onchange = async e => {
+    try{
+      const t = await e.target.files[0].text();
+      const o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+      if(!o.school || !Array.isArray(o.grades)) throw 0;
+      D = o; save(); draw(); toast('تم فتح الملف');
+    }catch(_){ toast('الملف غير صالح'); }
+  };
+  $('#reset').onclick = () => { if(confirm('ستُحذف كل التعديلات غير المنشورة. متأكد؟')){ D = JSON.parse(LIVE); store.del('wx-admin-draft'); store.set('wx-admin-base', sig(LIVE)); status(); draw(); } };
+}
+
+function draw(){
+  drawNav(); theme(SECTIONS[tab] ? tab : tab === 'staff' ? 'contact' : 'home');
+  const v = $('#view');
+  if(tab === 'settings'){ v.innerHTML = settingsTab(); wireSettings(); }
+  else if(tab === 'publish'){ v.innerHTML = publishTab(); wirePublish(); }
+  else { v.innerHTML = listTab(tab); wireList(tab); }
+}
+status(); draw();
+</script>
+</body>
+</html>

@@ -3,439 +3,268 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
-<title>وطننا العراق — الدرس الأول</title>
-<style>
-@font-face{font-family:'Cairo';src:local('Cairo'),local('Cairo Regular'),local('Cairo-Regular');}
-:root{--olive:#DCE9D5;--cream:#FBF5E6;--card:#F4E8CB;--green:#1F3B2D;--ink:#1A1511;--brown:#5B4326;--line:#8A6F45;--red:#7A1212;--gold:#B8860B;}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;font-family:'Cairo',Tahoma,sans-serif;color:var(--ink);background:var(--olive);padding:14px;display:flex;flex-direction:column;align-items:center}
-header{width:100%;max-width:1040px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-header h1{margin:0;font-size:22px;color:var(--green)}
-.tools{display:flex;gap:6px}
-button{font-family:inherit;border:2px solid var(--line);background:var(--cream);color:var(--ink);padding:9px 14px;border-radius:12px;cursor:pointer;font-size:16px}
-button:disabled{opacity:.4;cursor:default}
-button.on{background:var(--green);color:var(--cream);border-color:var(--green)}
-.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0}
-.dots button{padding:5px 11px;font-size:14px;border-radius:20px}
-.frame{position:relative;width:100%;max-width:1040px;min-height:540px;background:var(--cream);border:3px double var(--green);border-radius:18px;padding:26px;box-shadow:0 14px 30px rgba(31,59,45,.18);animation:enter .6s ease both}
-.frame::before,.frame::after,.c2{content:"";position:absolute;width:16px;height:16px;background:var(--line);transform:rotate(45deg)}
-.frame::before{top:-9px;right:-9px}.frame::after{bottom:-9px;left:-9px}
-.c2{top:-9px;left:-9px}
-h2{margin:0 0 6px;font-size:28px;color:var(--green)}
-h3{margin:12px 0 6px;font-size:19px;color:var(--brown)}
-p{margin:6px 0;line-height:1.9;font-size:18px}
-.src{font-size:13px;color:var(--brown);margin-top:16px;border-top:1px dashed var(--line);padding-top:8px}
-.glow{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(31,59,45,.18),0 0 14px 4px rgba(57,255,20,.45);margin-left:6px;vertical-align:middle}
-.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
-.map{background:var(--olive);border:2px solid var(--line);border-radius:14px;padding:8px}
-.map svg{width:100%;max-height:520px;display:block}
-.nb{cursor:pointer}
-.nb text{font-family:inherit;font-size:44px;fill:var(--ink)}
-.nb:hover text{fill:var(--red);font-weight:700}
-.rg{cursor:pointer;stroke:#4A3A28;stroke-width:3;transition:fill .6s,opacity .3s}
-.rg:hover{opacity:.9}
-.rg.hit{stroke:var(--gold);stroke-width:8}
-.water{fill:#2F6F9A;opacity:.85;transition:opacity .6s}
-.water.hi{opacity:1;filter:drop-shadow(0 0 6px #7fd3ff)}
-.dam{cursor:pointer;transition:r .3s}
-.dam:hover{r:26}
-.info{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;min-height:70px;font-size:18px;line-height:1.8}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.chip{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:8px 14px;font-size:17px;cursor:pointer}
-.chip.sel{background:var(--green);color:var(--cream);border-color:var(--green)}
-.chip.done{background:#DCE9D5;border-color:var(--green)}
-.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
-.ok{color:var(--green);font-weight:700}
-.bad{color:var(--red);font-weight:700}
-.q{margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--line)}
-.q button{display:block;width:100%;text-align:right;margin:5px 0;font-size:17px}
-.timer{font-size:54px;font-weight:700;color:var(--red);text-align:center}
-.players{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.player{background:var(--card);border:3px solid var(--green);border-radius:16px;padding:14px;text-align:center}
-.player.live{background:#DCE9D5;box-shadow:0 0 0 4px rgba(57,255,20,.35)}
-.player .pts{font-size:46px;font-weight:700;color:var(--green)}
-.player button{width:100%;font-size:20px;padding:14px;margin-top:8px}
-.slider{width:100%;accent-color:var(--red);margin-top:10px}
-.zone{font-size:22px;font-weight:700;color:var(--green);margin-top:6px}
-.stars{font-size:34px;letter-spacing:4px;color:var(--gold)}
-.idcard{background:var(--cream);border:4px double var(--green);border-radius:18px;padding:22px;max-width:640px;margin:0 auto}
-.idcard h3{text-align:center;font-size:24px;color:var(--green)}
-.idcard li{margin:6px 0;font-size:17px;line-height:1.8}
-.idcard ul{padding-right:20px}
-.teach .frame p,.teach .info{font-size:24px}
-.teach h2{font-size:34px}
-@keyframes enter{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.still *{animation:none!important;transition:none!important}
-@media (max-width:760px){.grid2,.players{grid-template-columns:1fr}h2{font-size:23px}.frame{padding:18px}}
-@media print{body{background:#fff;padding:0}body *{visibility:hidden}#idcard,#idcard *{visibility:visible}#idcard{position:absolute;left:0;top:0;width:100%;max-width:none}header,.dots,.ctrl,.src{display:none}}
-</style>
+<title>بوابة مدارس براعم كربلاء</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/common.js"></script>
+<script src="data/content.js"></script>
 </head>
 <body>
-<header>
-  <h1>وطننا العراق · الدرس الأول</h1>
-  <div class="tools">
-    <button id="mute">🔊 الصوت</button>
-    <button id="still">إيقاف الحركة</button>
-    <button id="teach">وضع المعلم</button>
+<section class="hero">
+  <div class="wrap">
+    <div class="frame">
+      <div class="kicker"><span class="node"></span><span id="kick"></span></div>
+      <h1 id="title"></h1>
+      <p id="slogan"></p>
+      <div class="grades" id="grades" aria-label="اختر الصف"></div>
+    </div>
   </div>
-</header>
-<div class="dots" id="dots"></div>
-<main class="frame" id="stage"><span class="c2"></span></main>
-<div class="ctrl" style="display:flex;gap:10px;margin-top:14px;align-items:center">
-  <button id="prev">→ السابق</button>
-  <span id="prog" style="min-width:160px;text-align:center"></span>
-  <button id="next">← التالي</button>
-</div>
+</section>
+<nav class="topnav" aria-label="أقسام البوابة"><div class="wrap" id="nav"></div></nav>
+<main class="wrap" id="view"></main>
+<footer>© مؤسسة وصال التعليمية، إعداد: حسام الجنابي</footer>
 
 <script>
-const $ = s => document.querySelector(s);
-const AR = '٠١٢٣٤٥٦٧٨٩';
-const toAr = n => String(n).replace(/\d/g, d => AR[d]);
-const SH = {"mountain": {"paths": ["M145,1191 L145,1224 L210,1224 L210,1191 Z", "M591,177 L591,184 L579,194 L579,201 L583,202 L583,214 L591,222 L599,222 L604,234 L624,234 L625,247 L629,248 L629,255 L633,259 L686,259 L687,255 L703,255 L708,264 L713,265 L713,272 L717,273 L717,284 L721,285 L721,289 L728,284 L733,268 L741,268 L746,276 L770,276 L771,284 L767,285 L766,290 L750,290 L750,330 L754,331 L754,335 L762,335 L767,343 L778,343 L779,347 L783,347 L792,356 L792,364 L820,364 L824,360 L824,348 L833,343 L842,330 L866,326 L871,335 L875,336 L875,343 L871,344 L871,351 L875,352 L875,376 L871,380 L875,381 L875,389 L880,390 L880,397 L888,402 L892,418 L900,423 L900,456 L908,456 L913,464 L920,464 L925,469 L925,476 L929,476 L930,481 L934,482 L934,489 L945,489 L945,482 L954,476 L954,473 L945,472 L945,465 L950,464 L950,457 L966,456 L971,464 L980,465 L980,493 L975,498 L959,498 L959,502 L955,503 L955,514 L959,515 L959,522 L966,522 L967,527 L970,527 L970,515 L975,514 L976,510 L1000,510 L1004,482 L1000,481 L1000,469 L995,468 L995,461 L987,460 L987,444 L983,443 L983,436 L979,435 L979,427 L983,426 L984,414 L991,414 L992,410 L1004,410 L1008,414 L1008,407 L1016,406 L1016,402 L1008,394 L1001,394 L1000,390 L992,390 L991,394 L955,394 L954,390 L945,389 L945,377 L941,373 L925,373 L924,369 L908,368 L908,361 L912,360 L912,356 L904,355 L904,331 L899,330 L899,311 L888,311 L887,306 L870,301 L870,273 L874,269 L866,268 L866,256 L854,256 L853,252 L845,251 L849,235 L858,234 L858,231 L853,230 L853,223 L849,222 L849,215 L845,214 L845,210 L837,209 L837,202 L841,198 L837,197 L837,189 L833,185 L829,185 L828,189 L821,189 L820,194 L813,194 L808,206 L788,210 L788,218 L779,219 L778,210 L770,209 L770,198 L783,193 L774,177 L754,177 L750,173 L749,177 L733,181 L732,185 L725,185 L724,181 L700,185 L699,181 L691,180 L691,173 L683,173 L682,169 L662,169 L657,160 L650,160 L649,164 L633,164 L632,169 L621,169 L620,160 L616,160 L615,164 L604,164 L604,168 L595,177 Z"]}, "undulating": {"paths": ["M145,1241 L145,1249 L149,1250 L149,1257 L145,1258 L145,1274 L202,1274 L203,1269 L210,1269 L210,1241 Z", "M445,290 L445,301 L437,302 L437,314 L457,314 L462,322 L482,322 L483,326 L532,326 L533,330 L540,330 L541,335 L549,335 L550,339 L599,339 L600,343 L611,343 L612,347 L620,347 L621,351 L641,351 L642,355 L649,355 L654,364 L661,364 L662,368 L666,368 L667,385 L671,386 L671,406 L667,410 L671,411 L671,456 L675,457 L675,464 L679,468 L686,468 L678,460 L678,452 L686,451 L687,456 L692,457 L692,464 L700,465 L699,473 L687,473 L687,476 L691,476 L692,481 L708,497 L724,497 L725,502 L732,502 L733,506 L749,510 L767,531 L775,532 L779,547 L783,547 L784,552 L792,557 L792,564 L796,565 L796,572 L800,573 L804,589 L809,590 L809,598 L816,598 L821,603 L821,610 L834,619 L838,635 L845,635 L846,639 L853,635 L853,611 L837,602 L837,594 L833,593 L834,585 L845,585 L846,593 L850,594 L850,602 L862,602 L871,618 L880,619 L880,635 L884,636 L888,652 L892,653 L892,664 L900,665 L900,673 L916,677 L921,689 L930,690 L930,698 L934,699 L934,719 L938,720 L938,727 L946,735 L950,735 L967,756 L975,756 L976,764 L983,764 L984,769 L1001,774 L1001,785 L1005,786 L1005,798 L1008,798 L1008,790 L1012,789 L1012,778 L1016,774 L1004,764 L1004,757 L991,756 L991,749 L995,745 L987,744 L987,736 L984,736 L983,745 L975,744 L975,732 L983,731 L979,724 L958,723 L958,711 L950,710 L950,703 L945,702 L945,695 L937,689 L933,674 L925,674 L924,678 L916,677 L916,665 L929,664 L929,653 L933,652 L933,644 L937,643 L933,639 L937,619 L933,615 L920,614 L920,607 L924,603 L916,602 L916,594 L924,593 L930,585 L945,585 L946,581 L954,581 L954,573 L950,572 L950,548 L954,547 L955,539 L962,539 L963,531 L970,531 L971,527 L975,527 L975,523 L970,522 L970,511 L975,510 L976,506 L987,506 L991,510 L992,502 L1000,502 L1001,510 L1004,510 L1004,503 L1008,502 L1008,498 L1004,497 L1004,490 L1001,490 L1000,498 L979,497 L979,473 L983,472 L983,465 L987,461 L983,465 L976,465 L975,486 L959,486 L958,465 L970,464 L966,457 L951,457 L951,464 L946,465 L946,472 L951,473 L951,481 L946,482 L945,490 L934,490 L933,482 L924,476 L924,469 L920,465 L913,465 L908,457 L899,456 L899,423 L891,418 L887,402 L879,397 L879,390 L874,389 L874,352 L870,351 L870,344 L874,343 L874,327 L854,327 L853,331 L842,331 L842,335 L825,348 L825,360 L820,365 L792,365 L791,356 L783,348 L779,348 L778,344 L767,344 L762,336 L754,336 L753,331 L749,330 L749,290 L766,289 L766,285 L770,284 L770,273 L766,277 L746,277 L737,265 L733,265 L733,276 L729,277 L729,284 L717,285 L716,273 L712,272 L712,265 L708,265 L703,256 L687,256 L686,260 L633,260 L628,255 L628,248 L624,247 L624,235 L604,235 L599,230 L599,223 L591,223 L582,214 L582,202 L578,201 L578,194 L582,193 L582,189 L575,189 L575,197 L566,198 L562,202 L562,209 L554,210 L554,222 L545,231 L537,231 L533,235 L533,243 L525,244 L525,255 L520,256 L515,265 L508,265 L500,273 L499,281 L487,281 L486,285 L470,285 L466,281 L465,290 Z"]}, "plain": {"paths": ["M562,661 L562,664 L570,664 L575,669 L571,685 L575,689 L579,685 L586,685 L591,702 L595,702 L596,710 L604,715 L604,727 L608,728 L608,739 L612,740 L612,756 L616,757 L616,764 L612,765 L612,777 L616,781 L625,782 L625,794 L632,794 L637,802 L645,802 L650,807 L650,815 L646,819 L650,820 L650,827 L654,828 L654,835 L658,836 L658,840 L667,845 L667,852 L674,856 L674,824 L678,823 L678,816 L682,815 L682,790 L691,789 L692,794 L699,794 L704,799 L704,806 L708,807 L708,819 L713,820 L713,835 L717,836 L717,840 L729,841 L729,856 L725,857 L729,861 L729,877 L721,878 L720,882 L708,882 L708,890 L717,895 L717,902 L721,906 L732,906 L733,911 L738,912 L738,936 L746,937 L746,956 L742,957 L742,965 L757,961 L758,969 L763,970 L763,981 L767,982 L767,998 L771,994 L778,994 L779,998 L791,998 L792,1002 L799,1002 L800,1015 L804,1019 L812,1019 L817,1024 L817,1032 L824,1032 L829,1037 L829,1044 L842,1045 L842,1061 L874,1065 L875,1069 L880,1070 L880,1077 L884,1078 L884,1086 L888,1090 L892,1086 L904,1086 L917,1107 L941,1107 L942,1111 L958,1111 L963,1103 L970,1103 L971,1119 L983,1119 L988,1128 L996,1133 L996,1144 L1009,1145 L1009,1157 L1013,1153 L1021,1153 L1022,1161 L1046,1161 L1047,1165 L1054,1165 L1055,1169 L1096,1169 L1097,1178 L1093,1182 L1097,1186 L1104,1186 L1109,1178 L1117,1178 L1118,1186 L1113,1187 L1113,1194 L1121,1194 L1122,1199 L1137,1199 L1138,1203 L1146,1203 L1151,1211 L1167,1211 L1168,1215 L1217,1215 L1218,1219 L1233,1219 L1234,1224 L1242,1224 L1247,1232 L1254,1232 L1260,1240 L1264,1236 L1271,1236 L1272,1240 L1279,1240 L1280,1244 L1288,1244 L1289,1249 L1304,1249 L1304,1229 L1297,1229 L1296,1220 L1292,1219 L1292,1212 L1296,1208 L1288,1200 L1272,1200 L1271,1195 L1267,1194 L1267,1187 L1263,1186 L1263,1179 L1254,1178 L1254,1170 L1250,1169 L1250,1162 L1246,1161 L1246,1141 L1250,1140 L1250,1133 L1246,1132 L1246,1116 L1250,1115 L1250,1108 L1239,1108 L1238,1104 L1218,1108 L1217,1104 L1208,1103 L1208,1020 L1217,1015 L1217,1008 L1221,1007 L1221,974 L1213,969 L1213,962 L1208,961 L1208,953 L1204,949 L1192,948 L1192,937 L1179,936 L1179,928 L1188,927 L1188,924 L1179,919 L1179,912 L1171,906 L1171,899 L1163,895 L1162,886 L1155,886 L1154,882 L1147,882 L1146,886 L1130,886 L1129,882 L1122,882 L1121,878 L1113,878 L1104,861 L1096,860 L1096,853 L1092,857 L1084,857 L1083,845 L1079,841 L1067,841 L1066,832 L1055,832 L1054,824 L1047,824 L1046,820 L1017,820 L1016,816 L1009,816 L1008,807 L1004,806 L1004,786 L1000,785 L1000,774 L992,774 L991,770 L984,770 L983,765 L976,765 L975,761 L971,761 L954,744 L950,736 L946,736 L937,727 L937,720 L933,719 L933,699 L929,698 L929,690 L921,690 L916,685 L916,678 L900,674 L899,665 L883,660 L887,644 L884,644 L883,649 L867,653 L866,644 L858,636 L838,636 L837,628 L833,627 L833,619 L829,619 L820,610 L820,603 L816,599 L809,599 L808,594 L779,590 L778,586 L771,586 L770,582 L763,582 L762,578 L758,578 L753,569 L742,569 L741,573 L717,573 L712,568 L712,561 L708,561 L707,565 L700,565 L699,569 L692,569 L691,573 L671,573 L666,582 L658,582 L657,586 L633,586 L632,590 L625,590 L625,598 L621,599 L621,631 L625,632 L625,648 L629,649 L629,668 L632,668 L632,611 L637,606 L645,606 L650,611 L650,627 L654,628 L654,639 L658,643 L667,644 L671,660 L696,682 L696,694 L700,695 L700,702 L696,703 L695,711 L679,715 L679,719 L683,720 L682,728 L654,728 L653,724 L629,724 L628,720 L621,720 L620,715 L615,714 L615,707 L603,698 L603,690 L595,685 L595,678 L591,678 L590,682 L579,682 L578,669 L570,661 Z"]}, "western": {"paths": ["M206,1337 L202,1336 L202,1329 L191,1329 L190,1337 L149,1337 L149,1349 L140,1350 L140,1357 L148,1357 L149,1365 L206,1365 Z", "M140,1304 L140,1307 L145,1308 L145,1315 L198,1315 L199,1320 L202,1320 L202,1316 L210,1315 L210,1308 L215,1307 L215,1291 L211,1291 L210,1287 L203,1287 L202,1279 L199,1279 L198,1287 L166,1287 L165,1279 L157,1279 L157,1286 L145,1291 L145,1303 Z", "M433,311 L437,315 L437,326 L429,327 L429,343 L433,344 L433,364 L437,365 L437,372 L441,373 L441,385 L437,389 L445,390 L445,418 L437,419 L437,439 L433,440 L433,447 L424,448 L424,451 L429,452 L429,468 L420,469 L420,476 L424,477 L424,497 L420,498 L420,502 L424,503 L424,514 L420,515 L420,543 L416,544 L420,548 L420,556 L404,569 L404,581 L399,582 L399,593 L395,594 L395,602 L390,607 L374,607 L373,611 L345,615 L344,619 L337,619 L332,628 L324,628 L323,632 L316,632 L311,640 L295,644 L290,653 L274,657 L269,665 L262,665 L261,669 L253,669 L249,665 L248,669 L241,669 L240,678 L220,682 L219,695 L211,695 L210,690 L207,690 L207,698 L202,703 L195,703 L190,711 L182,711 L181,715 L174,715 L173,711 L169,715 L161,715 L161,727 L153,728 L148,736 L136,736 L135,732 L128,736 L128,744 L124,745 L124,760 L128,761 L128,777 L132,778 L132,794 L136,795 L140,835 L145,836 L145,856 L149,857 L149,869 L153,870 L153,877 L140,878 L140,885 L144,885 L145,890 L157,902 L174,903 L174,911 L178,912 L178,923 L170,924 L174,931 L198,931 L199,936 L206,936 L207,940 L244,944 L249,952 L273,952 L274,956 L290,956 L291,961 L306,961 L307,965 L315,965 L316,973 L332,973 L337,986 L344,986 L349,994 L357,994 L362,1002 L369,1002 L378,1015 L394,1019 L399,1032 L407,1032 L412,1040 L419,1040 L424,1048 L432,1048 L437,1057 L448,1057 L454,1065 L465,1065 L470,1073 L486,1077 L487,1082 L494,1082 L500,1090 L511,1090 L516,1095 L516,1103 L524,1103 L525,1107 L533,1108 L537,1123 L549,1123 L550,1132 L565,1136 L566,1144 L570,1144 L575,1153 L582,1153 L591,1165 L599,1165 L604,1170 L604,1178 L615,1178 L616,1186 L620,1186 L629,1195 L629,1199 L636,1199 L637,1203 L641,1203 L646,1208 L646,1219 L650,1220 L650,1224 L653,1224 L654,1219 L661,1219 L662,1228 L670,1228 L679,1240 L686,1240 L687,1244 L692,1245 L692,1249 L699,1249 L704,1261 L712,1261 L729,1282 L738,1283 L738,1290 L746,1291 L746,1295 L754,1300 L754,1307 L766,1307 L779,1324 L787,1324 L792,1332 L799,1332 L800,1340 L808,1340 L813,1349 L820,1349 L825,1354 L825,1361 L841,1365 L842,1370 L937,1374 L942,1382 L946,1378 L966,1378 L967,1382 L971,1378 L991,1378 L992,1382 L1033,1382 L1034,1386 L1050,1386 L1051,1382 L1062,1382 L1072,1370 L1079,1370 L1079,1362 L1087,1357 L1087,1350 L1096,1345 L1096,1337 L1101,1332 L1108,1332 L1108,1316 L1117,1311 L1117,1296 L1129,1295 L1129,1283 L1133,1282 L1129,1278 L1129,1266 L1133,1265 L1133,1258 L1137,1257 L1138,1244 L1146,1244 L1151,1236 L1175,1236 L1176,1232 L1213,1232 L1214,1236 L1221,1236 L1222,1240 L1246,1240 L1247,1236 L1254,1236 L1254,1233 L1247,1233 L1242,1225 L1234,1225 L1233,1220 L1218,1220 L1217,1216 L1168,1216 L1167,1212 L1151,1212 L1146,1204 L1138,1204 L1137,1200 L1122,1200 L1121,1195 L1113,1195 L1112,1187 L1117,1186 L1117,1179 L1109,1179 L1104,1187 L1097,1187 L1096,1170 L1055,1170 L1054,1166 L1038,1162 L1037,1158 L1033,1162 L1022,1162 L1021,1154 L1008,1153 L1008,1137 L1005,1137 L1004,1145 L996,1145 L995,1133 L987,1128 L987,1124 L983,1120 L970,1119 L970,1104 L963,1104 L958,1112 L942,1112 L941,1108 L917,1108 L912,1099 L908,1098 L908,1091 L900,1087 L899,1083 L895,1087 L884,1087 L883,1078 L879,1077 L879,1070 L875,1070 L874,1066 L842,1062 L841,1045 L829,1045 L828,1037 L816,1032 L816,1024 L799,1015 L799,1003 L766,994 L766,987 L770,986 L770,982 L762,981 L762,970 L757,969 L757,962 L750,962 L749,966 L741,965 L741,957 L745,956 L745,945 L749,941 L737,936 L737,912 L732,911 L732,903 L728,907 L721,907 L716,902 L716,895 L708,891 L707,886 L696,886 L695,882 L686,881 L682,866 L666,852 L666,845 L662,845 L657,836 L653,835 L653,828 L649,827 L649,807 L645,803 L637,803 L632,795 L625,795 L624,782 L616,782 L611,777 L611,765 L615,764 L615,757 L611,756 L611,740 L607,739 L607,728 L603,727 L603,715 L590,706 L586,682 L595,681 L604,690 L604,698 L616,707 L616,714 L620,714 L621,719 L628,719 L629,723 L653,723 L654,727 L686,727 L682,720 L675,720 L674,715 L662,715 L661,711 L650,711 L649,707 L642,707 L641,699 L636,698 L636,682 L632,681 L632,674 L628,673 L628,649 L624,648 L624,640 L620,639 L620,599 L624,598 L624,590 L632,589 L633,585 L657,585 L658,581 L666,581 L671,572 L691,572 L692,568 L699,568 L700,564 L712,564 L717,572 L741,572 L742,568 L753,568 L763,581 L770,581 L771,585 L778,585 L779,589 L791,589 L792,593 L803,593 L803,586 L799,585 L799,573 L795,572 L791,557 L783,552 L783,548 L778,547 L778,540 L749,511 L742,511 L741,507 L725,503 L724,498 L708,498 L691,481 L691,477 L687,477 L674,464 L674,457 L670,456 L670,411 L666,410 L670,386 L666,385 L666,369 L662,369 L661,365 L654,365 L649,356 L642,356 L641,352 L621,352 L620,348 L608,348 L607,344 L600,344 L599,340 L546,340 L545,336 L540,335 L540,331 L533,331 L532,327 L483,327 L482,323 L462,323 L457,315 Z"]}, "water": {"paths": ["M1247,1241 L1247,1249 L1243,1250 L1247,1254 L1247,1274 L1260,1275 L1260,1290 L1268,1296 L1268,1311 L1260,1312 L1259,1316 L1251,1316 L1250,1308 L1254,1304 L1243,1304 L1242,1308 L1234,1308 L1226,1316 L1218,1332 L1225,1332 L1226,1340 L1233,1340 L1234,1336 L1254,1336 L1255,1345 L1264,1346 L1264,1353 L1268,1354 L1268,1374 L1272,1375 L1272,1382 L1276,1383 L1276,1391 L1280,1392 L1280,1399 L1289,1404 L1289,1416 L1301,1421 L1301,1445 L1317,1445 L1317,1379 L1321,1378 L1317,1374 L1317,1258 L1313,1257 L1313,1250 L1297,1250 L1296,1254 L1289,1254 L1288,1250 L1280,1250 L1279,1245 L1272,1245 L1271,1241 L1264,1241 L1263,1245 L1251,1245 Z", "M202,1169 L202,1158 L198,1154 L191,1154 L190,1149 L186,1149 L181,1158 L174,1158 L173,1154 L169,1158 L153,1154 L153,1161 L169,1165 L170,1173 L185,1173 L186,1178 L198,1178 L198,1170 Z", "M687,782 L687,789 L683,790 L683,815 L679,816 L679,823 L675,824 L675,840 L679,841 L679,848 L683,849 L683,869 L691,873 L700,885 L707,885 L708,881 L720,881 L721,877 L728,877 L728,861 L716,856 L716,849 L720,845 L716,844 L716,836 L712,835 L712,820 L707,819 L707,807 L703,806 L703,799 L699,795 L691,794 L691,782 Z", "M667,769 L678,769 L679,773 L695,773 L699,757 L671,757 L667,761 Z", "M859,611 L859,639 L867,644 L867,652 L874,652 L870,648 L870,640 L879,639 L879,632 L874,631 L874,624 Z", "M637,603 L637,610 L633,611 L633,681 L646,690 L646,698 L650,699 L650,706 L654,710 L674,710 L675,714 L695,710 L695,703 L699,702 L699,695 L695,694 L695,682 L691,686 L682,685 L682,669 L670,660 L666,644 L658,644 L653,639 L653,628 L649,627 L649,611 L641,603 Z", "M512,599 L516,614 L524,618 L529,627 L533,623 L540,623 L546,631 L553,631 L561,623 L561,611 L553,603 L533,603 L532,599 L516,603 Z", "M178,394 L182,401 L194,401 L190,394 Z", "M854,340 L854,343 L859,344 L859,351 L850,352 L850,355 L854,356 L854,360 L862,360 L862,356 L866,355 L866,340 Z", "M462,152 L462,159 L466,163 L470,159 L482,159 L482,156 L470,156 L469,148 Z"]}, "outline": {"paths": ["M604,160 L600,164 L600,172 L591,173 L587,184 L582,189 L575,189 L574,198 L562,198 L562,209 L554,210 L554,222 L549,227 L537,227 L529,235 L525,251 L516,252 L500,269 L499,277 L487,277 L486,281 L454,281 L453,290 L441,290 L441,301 L433,311 L433,326 L429,327 L429,360 L433,361 L433,376 L437,377 L437,389 L441,390 L441,418 L437,419 L433,443 L424,448 L424,468 L420,469 L420,506 L416,507 L416,552 L412,553 L412,560 L404,569 L404,581 L399,582 L399,593 L395,598 L387,599 L386,603 L374,603 L369,611 L337,615 L332,624 L307,632 L294,644 L287,644 L286,649 L278,649 L273,657 L266,657 L265,665 L249,665 L248,669 L241,669 L231,682 L220,682 L215,690 L207,690 L206,699 L199,699 L190,707 L178,707 L169,715 L161,715 L160,724 L153,724 L148,732 L132,732 L124,740 L124,777 L128,778 L128,789 L132,790 L132,815 L136,816 L136,831 L140,832 L140,852 L145,853 L145,877 L140,878 L140,890 L148,890 L153,895 L153,902 L170,903 L170,927 L174,931 L198,931 L199,940 L210,940 L211,944 L240,944 L241,952 L265,952 L266,956 L273,956 L274,961 L290,961 L291,965 L302,965 L303,969 L315,969 L324,977 L332,977 L341,987 L341,994 L361,998 L366,1003 L366,1011 L377,1011 L378,1019 L383,1023 L394,1023 L399,1028 L399,1036 L407,1036 L408,1040 L415,1040 L424,1048 L432,1048 L433,1057 L440,1057 L445,1065 L465,1065 L470,1077 L478,1077 L479,1082 L490,1082 L495,1090 L503,1090 L508,1098 L515,1098 L520,1107 L532,1107 L541,1128 L557,1132 L579,1161 L590,1161 L604,1174 L604,1182 L620,1186 L621,1194 L628,1194 L633,1203 L641,1203 L650,1224 L674,1232 L675,1240 L683,1245 L683,1249 L695,1249 L696,1257 L703,1257 L708,1269 L716,1269 L721,1278 L729,1279 L729,1286 L737,1286 L742,1295 L749,1295 L750,1303 L763,1315 L774,1315 L779,1321 L779,1328 L799,1332 L804,1345 L809,1349 L820,1349 L834,1370 L841,1370 L842,1374 L887,1374 L888,1378 L933,1378 L934,1382 L1062,1386 L1067,1374 L1079,1374 L1083,1366 L1092,1361 L1092,1350 L1096,1349 L1100,1333 L1108,1332 L1108,1316 L1117,1311 L1121,1296 L1129,1295 L1133,1266 L1137,1265 L1138,1244 L1154,1244 L1155,1236 L1221,1236 L1226,1244 L1238,1244 L1239,1240 L1279,1240 L1280,1244 L1288,1244 L1289,1249 L1304,1249 L1304,1229 L1296,1228 L1296,1204 L1292,1200 L1272,1200 L1267,1194 L1267,1187 L1263,1186 L1263,1179 L1254,1178 L1254,1170 L1250,1169 L1254,1133 L1246,1132 L1246,1116 L1250,1115 L1250,1108 L1239,1108 L1238,1104 L1214,1104 L1213,1099 L1208,1098 L1208,1078 L1213,1077 L1213,1070 L1208,1069 L1208,1037 L1213,1036 L1213,1028 L1217,1027 L1221,974 L1213,969 L1213,962 L1208,961 L1204,945 L1196,937 L1188,936 L1188,924 L1183,923 L1179,907 L1171,902 L1171,891 L1163,891 L1162,886 L1155,886 L1154,882 L1122,882 L1121,878 L1113,878 L1112,866 L1097,861 L1096,853 L1092,849 L1084,849 L1075,836 L1059,832 L1058,824 L1042,820 L1041,816 L1026,816 L1025,811 L1009,811 L1008,795 L1016,789 L1016,774 L1008,769 L1004,753 L996,753 L995,745 L987,744 L987,736 L983,735 L979,724 L958,719 L958,711 L950,706 L950,695 L937,689 L937,682 L929,673 L929,653 L937,643 L937,619 L929,614 L929,594 L933,593 L934,585 L958,581 L958,569 L954,568 L954,540 L962,539 L967,531 L975,531 L980,510 L1004,510 L1004,503 L1008,502 L1004,465 L995,460 L995,452 L987,443 L987,427 L991,426 L992,418 L1008,418 L1009,414 L1021,410 L1021,398 L1009,398 L1004,393 L1004,386 L988,386 L987,390 L976,390 L975,394 L959,394 L958,390 L950,389 L950,377 L942,377 L937,365 L912,360 L912,352 L908,351 L908,331 L904,330 L904,315 L899,314 L899,306 L895,302 L880,302 L874,297 L874,269 L866,264 L866,252 L858,247 L858,215 L853,214 L853,206 L845,205 L845,189 L841,185 L817,185 L817,193 L812,198 L804,198 L803,206 L784,206 L783,173 L778,169 L767,169 L766,164 L750,164 L741,177 L700,177 L699,173 L679,169 L678,164 L667,164 L666,160 Z"]}};
-const VIEW = "0 0 1401 1489";
-const IRAQ_D = SH.outline.paths.join(' ');
+/* ============ البيانات ============ */
+const PREVIEW = /[?&]preview\b/.test(location.search);
+const D = (PREVIEW && store.get('wx-admin-draft')) || window.SCHOOL;
+let grade = store.get('wx-grade') || '';
+if(!D.grades.includes(grade)) grade = '';
+const forGrade = it => !grade || !it.grade || it.grade === grade;
+const items = k => (D[k] || []).filter(forGrade);
+const today = todayISO();
 
-/* ---------- الصوت ---------- */
-let ac = null, osc = null, gain = null, stopT = null, muted = false;
-function audio(){ if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } } if(ac.state==='suspended') ac.resume(); return ac; }
-function tone(f){ if(muted) return; const c = audio(); if(!c) return;
-  if(!osc){ osc = c.createOscillator(); gain = c.createGain(); gain.gain.value = 0; osc.type='sine'; osc.connect(gain).connect(c.destination); osc.start(); }
-  osc.frequency.setTargetAtTime(f, c.currentTime, 0.03); gain.gain.setTargetAtTime(0.06, c.currentTime, 0.03);
-  clearTimeout(stopT); stopT = setTimeout(silence, 1500); }
-function silence(){ if(gain && ac) gain.gain.setTargetAtTime(0, ac.currentTime, 0.05); }
-function blip(ok){ if(muted) return; const c = audio(); if(!c) return; const o = c.createOscillator(), g = c.createGain();
-  o.type='triangle'; o.frequency.value = ok===false ? 220 : 660; g.gain.value = 0.05; o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+0.18); }
-$('#mute').onclick = () => { muted = !muted; $('#mute').textContent = muted ? '🔇 مكتوم' : '🔊 الصوت'; if(muted) silence(); };
-$('#still').onclick = () => { document.body.classList.toggle('still'); $('#still').classList.toggle('on'); };
-$('#teach').onclick = () => { document.body.classList.toggle('teach'); $('#teach').classList.toggle('on'); };
-
-/* ---------- الخريطة: أشكال مستخرجة من خريطة الكتاب رقم (١) ---------- */
-const NB = { 'تركيا':'تحدّ العراق من الشمال.', 'إيران':'تحدّ العراق من الشرق.', 'سوريا':'تحاذي العراق من الغرب.', 'الأردن':'تحاذي العراق من الغرب.', 'السعودية':'تحاذي العراق من الغرب والجنوب.', 'الكويت':'تحاذي العراق من الجنوب.' };
-const NB_POS = [['تركيا',700,110],['إيران',1365,760],['سوريا',40,600],['الأردن',40,900],['السعودية',520,1440],['الكويت',1190,1440]];
-function neighbours(){ return NB_POS.map(([n,x,y]) => `<g class="nb" data-n="${n}"><text x="${x}" y="${y}" text-anchor="middle">${n}</text></g>`).join(''); }
-const REG = [
-  { id:'mt', n:'المنطقة الجبلية', key:'mountain', d:'تنتشر الجبال في الأقسام الشمالية والشمالية الشرقية من العراق.' },
-  { id:'ud', n:'المنطقة المتموجة', key:'undulating', d:'تمتد المناطق المتموجة إلى الجنوب الغربي من المنطقة الجبلية.' },
-  { id:'pl', n:'السهل الرسوبي', key:'plain', d:'في وسط العراق وجنوبه تنبسط الأرض وتصبح سهلية، ويطلق عليها تسمية السهل الرسوبي.' },
-  { id:'wp', n:'الهضبة الغربية', key:'western', d:'تتكون الأقسام الغربية والجنوبية الغربية من هضبة واسعة يطلق عليها تسمية الهضبة الغربية، وهي أكبر أقسام السطح مساحة.' }
-];
-const REG_FILL = { mountain:'#B5652E', undulating:'#D9A46B', plain:'#A9C970', western:'#F5E9A8' };
-function pathsOf(key){ return SH[key].paths.map(d => `<path d="${d}"/>`).join(''); }
-function baseMap(extra){ return `<svg viewBox="${VIEW}" role="img" aria-label="خريطة العراق">${extra}</svg>`; }
-
-/* ---------- الشاشات ---------- */
-const screens = [];
-
-/* 1 — الموقع */
-screens.push({ title:'أين يقع وطننا؟', render(el){
-  el.innerHTML = `
-    <h2>أين يقع وطننا؟ <span class="glow"></span></h2>
-    <div class="grid2">
-      <div class="map">${baseMap(`<path d="${IRAQ_D}" fill="#E8D7A5" stroke="#4A3A28" stroke-width="5"/>
-        <text x="700" y="760" text-anchor="middle" font-size="70" font-weight="700" fill="#1A1511">العراق</text>${neighbours()}`)}</div>
-      <div>
-        <div class="box">
-          <p><b>توقّع:</b> العراق في أي جزء من قارة آسيا؟</p>
-          <button id="g1">الجنوب الغربي</button> <button id="g2">الشرق</button>
-          <p id="gr"></p>
-        </div>
-        <div class="info" id="info">اضغط على دولة مجاورة.</div>
-        <p>يقع وطننا العراق في الجزء الجنوبي الغربي من قارة آسيا، وفي القسم الشمالي الشرقي من العالم العربي. تحده من الشمال تركيا، ومن الشرق إيران، أما من الغرب والجنوب فتحاذيه سوريا والأردن والسعودية والكويت.</p>
-      </div>
-    </div>
-    <div class="src">المادة والخريطة مستندتان إلى كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية (خريطة رقم ١)</div>`;
-  $('#g1').onclick = () => { blip(true); $('#gr').innerHTML = '<span class="ok">صحيح.</span> العراق في الجزء الجنوبي الغربي من قارة آسيا.'; };
-  $('#g2').onclick = () => { blip(false); $('#gr').innerHTML = '<span class="bad">ليس صحيحاً.</span> العراق في الجزء الجنوبي الغربي من قارة آسيا.'; };
-  el.querySelectorAll('.nb').forEach(g => g.addEventListener('click', () => { blip(true); $('#info').innerHTML = `<b>${g.dataset.n}</b> ${NB[g.dataset.n]}`; }));
-}});
-
-/* 2 — أقسام السطح: اختر الاسم ثم الموقع */
-screens.push({ title:'أقسام السطح', render(el){
-  const done = new Set(); let sel = null;
-  el.innerHTML = `
-    <h2>أقسام سطح العراق</h2>
-    <p>اختر اسم القسم من القائمة، ثم اضغط موقعه على الخريطة.</p>
-    <div class="grid2">
-      <div class="map">${baseMap(`<path d="${IRAQ_D}" fill="#fff" stroke="none"/>` + REG.map(r => `<g class="rg" data-id="${r.id}" style="fill:${REG_FILL[r.key]}">${pathsOf(r.key)}</g>`).join('') + `<path d="${IRAQ_D}" fill="none" stroke="#4A3A28" stroke-width="5"/>`)}</div>
-      <div>
-        <div class="chips" id="names"></div>
-        <div class="info" id="info">اختر اسماً من القائمة.</div>
-        <p class="small" id="score"></p>
-      </div>
-    </div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية (خريطة رقم ١)</div>`;
-  const box = el.querySelector('#names');
-  REG.forEach(r => { const c = document.createElement('span'); c.className='chip'; c.textContent = r.n; c.dataset.id = r.id;
-    c.onclick = () => { if(done.has(r.id)) return; el.querySelectorAll('.chip').forEach(x => x.classList.remove('sel')); c.classList.add('sel'); sel = r.id; $('#info').textContent = 'اضغط موقع القسم على الخريطة.'; };
-    box.appendChild(c); });
-  el.querySelectorAll('.rg').forEach(g => g.addEventListener('click', () => {
-    if(!sel){ $('#info').textContent = 'اختر اسم القسم أولاً.'; return; }
-    const r = REG.find(x => x.id === g.dataset.id);
-    if(sel === r.id){ blip(true); done.add(r.id); g.classList.add('hit'); el.querySelector(`.chip[data-id="${r.id}"]`).classList.add('done'); $('#info').innerHTML = `<span class="ok">صحيح.</span> ${r.d}`; }
-    else { blip(false); $('#info').innerHTML = '<span class="bad">ليس هذا الموقع.</span> جرّب مرة أخرى.'; }
-    sel = null; el.querySelectorAll('.chip').forEach(x => x.classList.remove('sel'));
-    $('#score').textContent = `${toAr(done.size)} من ${toAr(REG.length)} أقسام`;
-  }));
-}});
-
-/* 3 — المياه: الأنهار والبحيرات والسدود كما في خريطة رقم (٣) */
-const DAMS = [
-  { n:'الثرثار', x:700, y:600, d:'بحيرة من أهم مناطق خزن المياه وتوليد الطاقة الكهربائية.' },
-  { n:'الحبانية', x:720, y:820, d:'بحيرة من أهم مناطق خزن المياه وتوليد الطاقة الكهربائية.' },
-  { n:'الرزازة', x:740, y:900, d:'بحيرة من أهم مناطق خزن المياه، وهي مناطق سياحية جميلة.' },
-  { n:'دوكان', x:1000, y:300, d:'بحيرة في إقليم كردستان، من أهم مناطق خزن المياه وتوليد الطاقة الكهربائية.' },
-  { n:'دربندخان', x:1060, y:420, d:'بحيرة من أهم مناطق خزن المياه وتوليد الطاقة الكهربائية.' }
-];
-screens.push({ title:'المياه', render(el){
-  el.innerHTML = `
-    <h2>مياه العراق</h2>
-    <p>تنقسم مصادر المياه إلى ثلاثة أنواع: الأمطار والثلوج، والمياه السطحية، والمياه الجوفية. ويعد نهر دجلة وروافده والفرات وشط العرب من أهم الموارد المائية.</p>
-    <div class="grid2">
-      <div class="map">${baseMap(`<path d="${IRAQ_D}" fill="#E8D7A5" stroke="#4A3A28" stroke-width="5" opacity=".7"/>
-        <g id="wl">${SH.water.paths.map(d => `<path class="water" d="${d}"/>`).join('')}</g>
-        ${DAMS.map((m,i) => `<g class="dam-g" data-i="${i}"><circle class="dam" cx="${m.x}" cy="${m.y}" r="18" fill="#B8860B" stroke="#1A1511" stroke-width="4"/></g>`).join('')}
-        ${DAMS.map(m => `<text x="${m.x+30}" y="${m.y+10}" font-size="40" fill="#1A1511" font-weight="700">${m.n}</text>`).join('')}`)}</div>
-      <div>
-        <div class="chips">
-          <span class="chip" data-s="أ">الأمطار والثلوج</span>
-          <span class="chip" data-s="ب">المياه السطحية</span>
-          <span class="chip" data-s="ج">المياه الجوفية</span>
-        </div>
-        <div class="info" id="info">اختر نوعاً من المياه، أو اضغط بحيرة على الخريطة.</div>
-      </div>
-    </div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية (خريطة رقم ٣ والنص)</div>`;
-  const S = { 'أ':'الأمطار والثلوج من مصادر المياه في وطننا، وهي تغذي الأنهار والمياه الجوفية.', 'ب':'تجري على سطح الأرض، وتتمثل بالأنهار وروافدها وفروعها، والبحيرات، والأهوار والمستنقعات، والسدود.', 'ج':'مياه تحت سطح الأرض، وهي أحد المصادر المائية في وطننا.' };
-  el.querySelectorAll('.chip[data-s]').forEach(c => c.onclick = () => {
-    blip(true); el.querySelectorAll('#wl .water').forEach(w => w.classList.add('hi'));
-    setTimeout(() => el.querySelectorAll('#wl .water').forEach(w => w.classList.remove('hi')), 1400);
-    el.querySelectorAll('.chip[data-s]').forEach(x => x.classList.remove('sel')); c.classList.add('sel');
-    $('#info').innerHTML = `<b>${c.textContent}:</b> ${S[c.dataset.s]}`;
-  });
-  el.querySelectorAll('.dam-g').forEach(g => g.addEventListener('click', () => {
-    const m = DAMS[+g.dataset.i]; blip(true); $('#info').innerHTML = `<b>${m.n}:</b> ${m.d}`;
-  }));
-}});
-
-/* 4 — المناخ: توقّع ثم المؤشر والمناطق تتلوّن */
-screens.push({ title:'المناخ', render(el){
-  el.innerHTML = `
-    <h2>مناخ العراق</h2>
-    <div class="box">
-      <p><b>توقّع أولاً:</b> أين يزداد سقوط الأمطار، في الشمال أم في الجنوب؟</p>
-      <button data-p="n">الشمال</button> <button data-p="s">الجنوب</button>
-      <p id="rev"></p>
-    </div>
-    <div class="grid2" style="margin-top:12px">
-      <div class="map">${baseMap(`<path d="${IRAQ_D}" fill="#E8D7A5" stroke="#4A3A28" stroke-width="5" opacity=".5"/>
-        <line id="ln" x1="-40" x2="1440" y1="0" y2="0" stroke="#8A1F1F" stroke-width="10" stroke-dasharray="26 16"/>`)}</div>
-      <div>
-        <input type="range" class="slider" id="sl" min="0" max="100" value="0" aria-label="من الشمال إلى الجنوب">
-        <div class="zone" id="zone"></div>
-        <div class="info" id="info"></div>
-        <p class="small">حرّك المؤشر من الشمال إلى الجنوب.</p>
-      </div>
-    </div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية (خريطة رقم ٢ والنص)</div>`;
-  el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const ok = b.dataset.p === 'n'; blip(ok);
-    $('#rev').innerHTML = (ok ? '<span class="ok">صحيح.</span> ' : '<span class="bad">ليس صحيحاً.</span> ') + 'يزداد سقوط الأمطار في الأقسام الشمالية، وتقل كلما اتجهنا جنوباً.'; });
-  const Y0 = 150, Y1 = 1370;
-  const Z = t => t < 0.4
-    ? { z:'الشمال', i:'يزداد سقوط الأمطار، ويقتصر سقوطها في فصل الشتاء. تنخفض الحرارة في الشتاء، وتكون أكثر اعتدالاً في الصيف، لذلك يسافر إليها كثيرون في الصيف للراحة والاستجمام.' }
-    : { z:'الوسط والجنوب', i:'تقل الأمطار كلما اتجهنا جنوباً، ويقتصر سقوطها في الشتاء. ترتفع درجات الحرارة في فصل الصيف، وتتميز بالاعتدال في فصل الشتاء.' };
-  const sl = $('#sl');
-  function upd(){
-    const t = sl.value/100, y = Y0 + (Y1-Y0)*t, z = Z(t);
-    const ln = el.querySelector('#ln'); ln.setAttribute('y1', y); ln.setAttribute('y2', y);
-    $('#zone').textContent = z.z; $('#info').textContent = z.i;
-  }
-  sl.addEventListener('input', () => { upd(); tone(180 + sl.value*2.6); });
-  upd();
-}});
-
-/* 5 — الأمطار (نطاقات تقريبية مستخرجة من خريطة رقم ٢) */
-screens.push({ title:'نطاقات الأمطار', render(el){
-  const BANDS = [
-    { n:'أكثر من ١٠٠٠ ملم', c:'#4A4A48', y0:-50, y1:330 },
-    { n:'من ٦٠٠ إلى ١٠٠٠ ملم', c:'#8C7A68', y0:330, y1:560 },
-    { n:'من ٤٠٠ إلى ٦٠٠ ملم', c:'#C8A96A', y0:560, y1:760 },
-    { n:'من ١٥٠ إلى ٤٠٠ ملم', c:'#EDE4A6', y0:760, y1:1100 },
-    { n:'أقل من ١٥٠ ملم', c:'#F4F1E6', y0:1100, y1:1500 }
-  ];
-  el.innerHTML = `
-    <h2>نطاقات سقوط الأمطار</h2>
-    <p>اضغط أي نطاق لتعرف مقدار الأمطار فيه. النطاقات تقريبية، ومستخرجة من خريطة الكتاب رقم (٢).</p>
-    <div class="grid2">
-      <div class="map">${baseMap(`<defs><clipPath id="cp"><path d="${IRAQ_D}"/></clipPath></defs>
-        <g clip-path="url(#cp)">${BANDS.map((b,i) => `<rect class="band" data-i="${i}" x="-100" y="${b.y0}" width="1600" height="${b.y1-b.y0}" fill="${b.c}" style="cursor:pointer"/>`).join('')}</g>
-        <path d="${IRAQ_D}" fill="none" stroke="#4A3A28" stroke-width="5"/>`)}</div>
-      <div>
-        <div class="chips">${BANDS.map((b,i) => `<span class="chip" data-i="${i}">${b.n}</span>`).join('')}</div>
-        <div class="info" id="info">اختر نطاقاً.</div>
-        <p>هل معدل سقوط الأمطار متساوٍ في جميع أنحاء العراق؟ <b>جرّب الجواب بعد قراءة النطاقات.</b></p>
-      </div>
-    </div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية (خريطة رقم ٢)</div>`;
-  const T = ['أكثر الأقسام مطراً، وتقع في أقصى الشمال.','من أكثر الأقسام مطراً بعد الشمال المرتفع.','نطاق وسط، تقل فيه الأمطار عن الشمال.','تقل فيه الأمطار كلما اتجهنا جنوباً.','أقل النطاقات مطراً، ويقع في الغرب والجنوب الغربي.'];
-  const show = i => { blip(true); $('#info').innerHTML = `<b>${BANDS[i].n}:</b> ${T[i]}`; };
-  el.querySelectorAll('.band').forEach(r => r.addEventListener('click', () => show(+r.dataset.i)));
-  el.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => show(+c.dataset.i)));
-}});
-
-/* 6 — أقدم الحضارات: خريطة رقم (٤) تخطيطية */
-const SITES = [
-  { n:'نينوى', x:560, y:250, d:'مدينة أثرية شمال العراق.' },
-  { n:'آشور', x:520, y:430, d:'مدينة أثرية على نهر دجلة، تنتمي إلى الحضارة الآشورية.' },
-  { n:'أكد', x:770, y:760, d:'مدينة أثرية في وسط العراق، تنتمي إلى الحضارة الأكدية.' },
-  { n:'بابل', x:800, y:840, d:'مدينة أثرية على نهر الفرات، تنتمي إلى الحضارة البابلية.' },
-  { n:'أور', x:1060, y:1120, d:'مدينة أثرية في جنوب العراق، تنتمي إلى الحضارة السومرية.' }
-];
-screens.push({ title:'أقدم الحضارات', render(el){
-  el.innerHTML = `
-    <h2>العراق بلد الحضارات</h2>
-    <div class="grid2">
-      <div class="map">${baseMap(`<path d="${IRAQ_D}" fill="#E8D7A5" stroke="#4A3A28" stroke-width="5"/>
-        <path d="M520,180 C560,420 620,640 780,900 C900,1080 1080,1200 1200,1280" fill="none" stroke="#2F6F9A" stroke-width="12" stroke-linecap="round"/>
-        <path d="M380,300 C560,520 640,760 780,900 C900,1020 1040,1140 1200,1260" fill="none" stroke="#2F6F9A" stroke-width="12" stroke-linecap="round"/>
-        <text x="300" y="1300" font-size="34" fill="#1E2F4A" font-weight="700">الفرات</text>
-        <text x="1080" y="1010" font-size="34" fill="#1E2F4A" font-weight="700">دجلة</text>
-        ${SITES.map((s,i) => `<g class="site" data-i="${i}" style="cursor:pointer"><circle cx="${s.x}" cy="${s.y}" r="22" fill="#7A1212" stroke="#FBF5E6" stroke-width="4"/><text x="${s.x+34}" y="${s.y+12}" font-size="42" font-weight="700" fill="#1A1511">${s.n}</text></g>`).join('')}`)}</div>
-      <div>
-        <div class="info" id="info">اضغط موقعاً أثرياً على الخريطة.</div>
-        <div class="box">
-          <p>نشأت على أرض العراق حضارات عريقة، منها السومرية والأكدية والبابلية والآشورية.</p>
-          <p>العراقيون أول من اخترع الكتابة والتدوين، وأن العراق مهد القوانين والتشريعات، ومنها قوانين أور نمو وحمورابي.</p>
-        </div>
-        <p class="small">الخريطة تخطيطية، والمواقع تقريبية.</p>
-      </div>
-    </div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية (خريطة رقم ٤ والنص، ص٨ وص٩)</div>`;
-  el.querySelectorAll('.site').forEach(g => g.addEventListener('click', () => { const s = SITES[+g.dataset.i]; blip(true); $('#info').innerHTML = `<b>${s.n}:</b> ${s.d}`; }));
-}});
-
-/* 7 — التحدي */
-const CH = [
-  { q:'في أي أقسام العراق تنتشر الجبال؟', o:['الجنوب الغربي','الشمال والشمال الشرقي','الوسط فقط'], a:1, w:'تنتشر الجبال في الأقسام الشمالية والشمالية الشرقية.' },
-  { q:'أي التضاريس تشغل مساحة أكبر في العراق؟', o:['السهل الرسوبي','المنطقة المتموجة','الهضبة الغربية'], a:2, w:'تتكون الأقسام الغربية والجنوبية الغربية من هضبة واسعة.' },
-  { q:'هل معدل سقوط الأمطار متساوٍ في جميع أنحاء العراق؟', o:['نعم','لا'], a:1, w:'يزداد سقوط الأمطار في الأقسام الشمالية، وتقل كلما اتجهنا جنوباً.' },
-  { q:'لماذا يسافر كثير من الناس إلى الشمال في فصل الصيف؟', o:['لأن الأمطار فيه قليلة','لأن الحرارة فيه أكثر اعتدالاً','لأنه سهل منبسط'], a:1, w:'لأن درجات الحرارة تكون أكثر اعتدالاً في فصل الصيف، فيسافر الناس إليها للراحة والاستجمام.' },
-  { q:'لماذا تُعد البحيرات مهمة؟', o:['لخزن المياه وتوليد الطاقة الكهربائية','لأنها تمنع سقوط الأمطار','لأنها تزيد ملوحة المياه'], a:0, w:'تعد من أهم المناطق لخزن المياه وتوليد الطاقة الكهربائية، إضافة إلى كونها مناطق سياحية.' },
-  { q:'كم عدد محافظات العراق؟', o:['16','18','19'], a:1, w:'يتكون التقسيم الإداري لوطننا من ثماني عشرة محافظة.' },
-  { q:'من الذي اخترع الكتابة والتدوين؟', o:['المصريون','العراقيون','الفينيقيون'], a:1, w:'ورد في الكتاب أن العراقيين أول من اخترع الكتابة والتدوين.' },
-  { q:'من أشهر من وضعوا القوانين في العراق القديم؟', o:['حمورابي','الإسكندر الأكبر','صلاح الدين'], a:0, w:'من القوانين التي ذكرها الكتاب قوانين حمورابي وقوانين أور نمو.' },
-  { q:'أي الحضارات التالية نشأت على أرض العراق؟', o:['السومرية','الفرعونية','الصينية'], a:0, w:'من أشهر الحضارات التي نشأت في العراق: السومرية والأكدية والبابلية والآشورية.' },
-  { q:'أين يقع موقع نمريك الذي ذكره الكتاب؟', o:['شمال الموصل','جنوب البصرة','غرب الأنبار'], a:0, w:'استوطن القرى الزراعية في موقع نمريك شمالي الموصل في الألف الثامن قبل الميلاد.' }
-];
-screens.push({ title:'التحدي', render(el){
-  let score = 0, done = 0;
-  el.innerHTML = `<h2>التحدي: هل فهمت وطننا؟</h2><p>أجب عن الأسئلة، وبعد كل إجابة يظهر التفسير.</p><div id="qs"></div><div id="res"></div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية</div>`;
-  const box = el.querySelector('#qs');
-  CH.forEach((item,i) => { const d = document.createElement('div'); d.className='q';
-    d.innerHTML = `<p><b>${toAr(i+1)}.</b> ${item.q}</p>`;
-    item.o.forEach((opt,j) => { const b = document.createElement('button'); b.textContent = opt;
-      b.onclick = () => { if(d.dataset.a) return; d.dataset.a='1'; done++; const right = j===item.a; if(right) score++; blip(right);
-        const f = document.createElement('p'); f.innerHTML = (right ? '<span class="ok">إجابة صحيحة.</span> ' : '<span class="bad">ليست الإجابة الصحيحة.</span> ') + item.w; d.appendChild(f);
-        if(done === CH.length){ const s = score === CH.length ? 3 : score >= 7 ? 2 : 1;
-          el.querySelector('#res').innerHTML = `<div class="box"><div class="stars">${'★'.repeat(s)}${'☆'.repeat(3-s)}</div><p>أجبت عن ${toAr(score)} من ${toAr(CH.length)} إجابات بشكل صحيح.</p><button id="again">أعد المحاولة</button></div>`;
-          el.querySelector('#again').onclick = () => render(cur); } };
-      d.appendChild(b); });
-    box.appendChild(d); });
-}});
-
-/* 8 — جولة السرعة بين تلميذين */
-const SP = [
-  { q:'كم قسماً تنقسم إليه تضاريس العراق؟', o:['ثلاثة','أربعة','خمسة'], a:1 },
-  { q:'أين تقع المنطقة الجبلية؟', o:['الجنوب','الشمال والشمال الشرقي','الغرب'], a:1 },
-  { q:'أين يقع السهل الرسوبي؟', o:['في الشمال','في وسط العراق وجنوبه','في الغرب فقط'], a:1 },
-  { q:'ما اسم النهرين الرئيسيين في العراق؟', o:['دجلة والفرات','دجلة والزاب','الفرات والكارون'], a:0 },
-  { q:'كم عدد مصادر المياه في وطننا؟', o:['اثنان','ثلاثة','أربعة'], a:1 },
-  { q:'أي البحيرات التالية في العراق؟', o:['الثرثار','فكتوريا','تيتيكاكا'], a:0 },
-  { q:'أين تقع الهضبة الغربية؟', o:['الشمال الشرقي','الغرب والجنوب الغربي','الشرق'], a:1 },
-  { q:'في أي الأقسام يزداد سقوط الأمطار؟', o:['الجنوب','الشمال','الوسط فقط'], a:1 },
-  { q:'متى يقتصر سقوط الأمطار غالباً؟', o:['الصيف','الشتاء','الربيع'], a:1 },
-  { q:'أين ترتفع درجات الحرارة صيفاً؟', o:['في الأقسام الوسطى والجنوبية','في الأقسام الشمالية فقط','في الجبال فقط'], a:0 },
-  { q:'ما اسم الحضارة التي نشأت في وسط العراق؟', o:['البابلية','الفرعونية','الهندية'], a:0 },
-  { q:'من وضع القوانين المشهورة في بلاد الرافدين؟', o:['حمورابي','نبوخذ نصر','الإسكندر'], a:0 }
-];
-screens.push({ title:'جولة السرعة', render(el){
-  const st = { q:0, s:[0,0], phase:'buzz', owner:null, left:12, iv:null, tried:false };
-  el.innerHTML = `
-    <h2>جولة السرعة</h2>
-    <p>تلميذان، والعداد لكل سؤال. من يضغط زره أولاً يجيب، فإن أخطأ انتقل السؤال للتلميذ الآخر.</p>
-    <div class="players">
-      <div class="player" id="pl0"><div>التلميذ الأول</div><div class="pts" id="p0">٠</div><button id="b0">اضغط أولاً</button></div>
-      <div class="player" id="pl1"><div>التلميذ الثاني</div><div class="pts" id="p1">٠</div><button id="b1">اضغط أولاً</button></div>
-    </div>
-    <div class="timer" id="tm">١٢</div>
-    <div class="box" id="qbox"></div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية</div>`;
-  function clearT(){ clearInterval(st.iv); st.iv = null; }
-  function startT(){ clearT(); st.left = 12; $('#tm').textContent = toAr(st.left);
-    st.iv = setInterval(() => { st.left--; $('#tm').textContent = toAr(st.left);
-      if(st.left <= 0){ clearT(); blip(false); $('#qbox').innerHTML = '<span class="bad">انتهى الوقت.</span>'; setTimeout(next, 1200); } }, 1000); }
-  function showQ(){ const item = SP[st.q]; st.phase='buzz'; st.owner=null; st.tried=false;
-    $('#qbox').innerHTML = `<p><b>${toAr(st.q+1)}.</b> ${item.q}</p>`;
-    $('#b0').disabled = false; $('#b1').disabled = false; $('#pl0').classList.remove('live'); $('#pl1').classList.remove('live'); startT(); }
-  function offer(side){ st.owner = side; st.phase='answer'; $('#pl'+side).classList.add('live'); $('#b0').disabled=true; $('#b1').disabled=true;
-    const item = SP[st.q]; const box = $('#qbox');
-    box.innerHTML = `<p><b>${toAr(st.q+1)}.</b> ${item.q}</p><p>الدور: <b>${side===0?'التلميذ الأول':'التلميذ الثاني'}</b></p>`;
-    item.o.forEach((opt,j) => { const b = document.createElement('button'); b.textContent = opt; b.onclick = () => answer(j); box.appendChild(b); }); }
-  function answer(j){ const item = SP[st.q]; clearT();
-    if(j === item.a){ st.s[st.owner]++; blip(true); $('#qbox').insertAdjacentHTML('beforeend','<p class="ok">إجابة صحيحة، نقطة لصالح التلميذ.</p>'); $('#p'+st.owner).textContent = toAr(st.s[st.owner]); setTimeout(next, 1400); }
-    else { blip(false); $('#qbox').insertAdjacentHTML('beforeend','<p class="bad">إجابة خاطئة.</p>');
-      if(!st.tried){ st.tried = true; const other = 1 - st.owner;
-        setTimeout(() => { $('#qbox').innerHTML = `<p><b>${toAr(st.q+1)}.</b> ${item.q}</p><p>الدور للتلميذ الآخر.</p><button id="ob">اضغط للإجابة</button>`;
-          $('#pl'+st.owner).classList.remove('live'); $('#ob').onclick = () => offer(other); startT(); }, 1200); }
-      else setTimeout(next, 1200); } }
-  function next(){ st.q++; if(st.q >= SP.length){ clearT();
-      const w = st.s[0]===st.s[1] ? 'تعادل' : (st.s[0] > st.s[1] ? 'فاز التلميذ الأول' : 'فاز التلميذ الثاني');
-      $('#qbox').innerHTML = `<h3>النتيجة</h3><p>${toAr(st.s[0])} : ${toAr(st.s[1])} — ${w}.</p><button id="again">جولة جديدة</button>`;
-      $('#tm').textContent = '—'; $('#b0').disabled = true; $('#b1').disabled = true; $('#again').onclick = () => render(cur); return; }
-    showQ(); }
-  $('#b0').onclick = () => { if(st.phase==='buzz'){ blip(true); offer(0); } };
-  $('#b1').onclick = () => { if(st.phase==='buzz'){ blip(true); offer(1); } };
-  showQ();
-}});
-
-/* 9 — بطاقة هوية الوطن */
-screens.push({ title:'بطاقة هوية الوطن', render(el){
-  el.innerHTML = `
-    <h2>بطاقة هوية الوطن</h2>
-    <div class="idcard" id="idcard">
-      <h3>وطننا العراق</h3>
-      <ul>
-        <li><b>الموقع:</b> الجزء الجنوبي الغربي من قارة آسيا، والقسم الشمالي الشرقي من العالم العربي.</li>
-        <li><b>الجيران:</b> تركيا شمالاً، وإيران شرقاً، وسوريا والأردن والسعودية والكويت من الغرب والجنوب.</li>
-        <li><b>التضاريس:</b> جبلية، ومتموجة، وسهل رسوبي، وهضبة غربية.</li>
-        <li><b>المياه:</b> الأمطار والثلوج، والمياه السطحية، والمياه الجوفية، ودجلة والفرات وشط العرب.</li>
-        <li><b>المناخ:</b> يزداد سقوط الأمطار شمالاً وتقل جنوباً، وترتفع الحرارة صيفاً في الوسط والجنوب.</li>
-        <li><b>الحضارة:</b> العراق بلد الحضارات، وأول من اخترع الكتابة والتدوين.</li>
-      </ul>
-    </div>
-    <div style="text-align:center;margin-top:12px"><button onclick="window.print()">اطبع البطاقة</button></div>
-    <div class="src">المصدر: كتاب الاجتماعيات للصف السادس الابتدائي، وزارة التربية · © مؤسسة وصال التعليمية · إعداد: حسام الجنابي</div>`;
-}});
-
-/* ---------- التنقّل ---------- */
-let cur = 0;
-const stage = $('#stage');
-function render(n){
-  cur = n;
-  stage.innerHTML = '<span class="c2"></span>';
-  const wrap = document.createElement('div'); stage.appendChild(wrap);
-  screens[cur].render(wrap);
-  document.querySelectorAll('#dots button').forEach((b,i) => b.classList.toggle('on', i===cur));
-  $('#prev').disabled = cur===0; $('#next').disabled = cur===screens.length-1;
-  $('#prog').textContent = `${toAr(cur+1)} من ${toAr(screens.length)} · ${screens[cur].title}`;
-  silence(); window.scrollTo({top:0,behavior:'smooth'});
+/* ============ الرأس والتنقل ============ */
+$('#title').innerHTML = `${esc(D.school.name)}<small>${PREVIEW ? 'معاينة المسودة — لم تُنشر بعد' : 'البوابة الإلكترونية'}</small>`;
+$('#slogan').textContent = D.school.slogan || '';
+document.title = 'بوابة ' + D.school.name;
+function drawGrades(){
+  $('#grades').innerHTML = ['', ...D.grades].map(g => `<button class="${g === grade ? 'on' : ''}" data-g="${esc(g)}">${g ? esc(g) : 'كل الصفوف'}</button>`).join('');
+  $('#kick').textContent = (D.school.year || '') + '، ' + gradeLabel(grade);
 }
-screens.forEach((s,i) => { const b = document.createElement('button'); b.textContent = toAr(i+1); b.onclick = () => render(i); $('#dots').appendChild(b); });
-$('#next').onclick = () => render(Math.min(cur+1, screens.length-1));
-$('#prev').onclick = () => render(Math.max(cur-1, 0));
-document.addEventListener('keydown', e => { if(e.key==='ArrowLeft') render(Math.min(cur+1, screens.length-1)); if(e.key==='ArrowRight') render(Math.max(cur-1, 0)); });
-render(0);
+$('#grades').onclick = e => { const b = e.target.closest('[data-g]'); if(!b) return; grade = b.dataset.g; store.set('wx-grade', grade); drawGrades(); route(); };
+$('#nav').innerHTML = `<a href="#/" data-k="home">🏠 الرئيسية</a>` + Object.entries(SECTIONS).map(([k, s]) => `<a href="#/${k}" data-k="${k}">${s.icon} ${s.label}</a>`).join('');
+drawGrades();
+
+/* ============ مكوّنات البطاقات ============ */
+const tags = it => `${it.subject ? `<span class="tag">${esc(it.subject)}</span>` : ''}<span class="tag">${esc(gradeLabel(it.grade))}</span>`;
+const isNew = it => { const d = dayDiff(it.date); return d !== null && d <= 0 && d >= -2; };
+const linkBtn = (url, text, cls='pri') => {
+  if(!url) return '';
+  const ext = /^https?:/.test(url) && !url.startsWith(location.origin);
+  return `<a class="btn ${cls}" href="${esc(url)}"${ext ? ' target="_blank" rel="noopener"' : ''}>${text}</a>`;
+};
+const CARD = {
+  announcements: it => `
+    <article class="card${it.urgent ? ' feat' : ''}" style="--c:${it.urgent ? '#7A1212' : 'var(--sec)'}">
+      <h3>${esc(it.title)}</h3>
+      <div class="meta">${it.urgent ? '<span class="tag hot">عاجل</span>' : ''}${isNew(it) ? '<span class="tag new">جديد</span>' : ''}
+        <span class="tag">${esc(gradeLabel(it.grade))}</span><span class="muted">${fmtDate(it.date)}</span></div>
+      <div class="body">${rich(it.body)}</div>
+    </article>`,
+  homework: it => {
+    const d = dayDiff(it.due), late = d !== null && d < 0;
+    const due = it.due ? `<span class="tag ${late ? 'late' : d <= 1 ? 'hot' : 'ok'}">${late ? 'انتهى موعد التسليم' : 'التسليم ' + relDay(d)}</span>` : '';
+    return `
+    <article class="card" style="--c:#1F3B2D">
+      <h3>${esc(it.title)}</h3>
+      <div class="meta">${isNew(it) ? '<span class="tag new">جديد</span>' : ''}${tags(it)}${due}</div>
+      <div class="body">${rich(it.body)}</div>
+      <div class="muted">أُعطي ${fmtDate(it.date)}${it.due ? '، آخر موعد ' + fmtDate(it.due) : ''}</div>
+      <div class="acts">${linkBtn(it.link, /#exam=/.test(it.link) ? '✏️ حلّ الواجب الآن' : 'فتح الرابط')}</div>
+    </article>`;
+  },
+  exams: it => {
+    const d = dayDiff(it.date), open = d !== null && d <= 0;
+    return `
+    <article class="card" style="--c:#1E2F4A">
+      <div class="evt">
+        <div class="cal" style="--c:#1E2F4A"><div class="d">${fmtDate(it.date, {day:'numeric'})}</div><div class="m">${fmtDate(it.date, {month:'long'})}</div></div>
+        <div style="flex:1">
+          <h3>${esc(it.title)}</h3>
+          <div class="meta">${tags(it)}<span class="tag ${d < 0 ? '' : d === 0 ? 'hot' : 'ok'}">${d < 0 ? 'انتهى' : relDay(d)}</span></div>
+          <div class="muted">${fmtDate(it.date)}</div>
+          ${it.body ? `<div class="body">${rich(it.body)}</div>` : ''}
+          <div class="acts">${it.link ? (open ? linkBtn(it.link, '📝 ادخل الامتحان') : `<span class="btn off">يُفتح ${relDay(d)}</span>`) : ''}</div>
+        </div>
+      </div>
+    </article>`;
+  },
+  lessons: it => {
+    const yt = ytId(it.link);
+    const icon = {'فيديو':'🎬', 'درس تفاعلي':'🧩', 'ملف':'📄'}[it.kind] || '🔗';
+    return `
+    <article class="card" style="--c:#5B4326">
+      <h3>${icon} ${esc(it.title)}</h3>
+      <div class="meta">${isNew(it) ? '<span class="tag new">جديد</span>' : ''}${tags(it)}${it.kind ? `<span class="tag">${esc(it.kind)}</span>` : ''}</div>
+      <div class="body">${rich(it.body)}</div>
+      <div class="acts">${yt ? `<a class="btn pri" href="#/lesson/${esc(it.id)}">▶ شاهد الدرس</a>` : linkBtn(it.link, 'افتح الدرس')}</div>
+    </article>`;
+  },
+  events: it => {
+    const d = dayDiff(it.date);
+    return `
+    <article class="card evt" style="--c:#3B2A1A">
+      <div class="cal" style="--c:#3B2A1A"><div class="d">${fmtDate(it.date, {day:'numeric'})}</div><div class="m">${fmtDate(it.date, {month:'long'})}</div></div>
+      <div style="flex:1">
+        <h3>${esc(it.title)}</h3>
+        <div class="meta"><span class="tag ${d === 0 ? 'hot' : d > 0 ? 'ok' : ''}">${relDay(d)}</span>${it.place ? `<span class="tag">📍 ${esc(it.place)}</span>` : ''}<span class="muted">${fmtDate(it.date)}</span></div>
+        ${it.body ? `<div class="body">${rich(it.body)}</div>` : ''}
+      </div>
+    </article>`;
+  },
+  activities: it => `
+    <article class="card" style="--c:#4A3A28">
+      ${it.image ? `<img class="thumb" src="${esc(it.image)}" alt="${esc(it.title)}" loading="lazy">` : ''}
+      <h3>${esc(it.title)}</h3>
+      <div class="meta"><span class="tag">${esc(gradeLabel(it.grade))}</span><span class="muted">${fmtDate(it.date)}</span></div>
+      <div class="body">${rich(it.body)}</div>
+      <div class="acts">${linkBtn(it.link, 'المزيد', '')}</div>
+    </article>`
+};
+const SORT = {
+  announcements: (a, b) => (!!b.urgent - !!a.urgent) || (b.date || '').localeCompare(a.date || ''),
+  homework: (a, b) => { const la = dayDiff(a.due) < 0, lb = dayDiff(b.due) < 0; return la - lb || (la ? b.due.localeCompare(a.due) : (a.due || '').localeCompare(b.due || '')); },
+  exams: (a, b) => { const pa = dayDiff(a.date) < 0, pb = dayDiff(b.date) < 0; return pa - pb || (pa ? (b.date || '').localeCompare(a.date || '') : (a.date || '').localeCompare(b.date || '')); },
+  lessons: (a, b) => (b.date || '').localeCompare(a.date || ''),
+  events: (a, b) => (a.date || '').localeCompare(b.date || ''),
+  activities: (a, b) => (b.date || '').localeCompare(a.date || '')
+};
+const emptyBox = t => `<div class="empty">${t}</div>`;
+const listOf = (k, arr) => arr.length ? `<div class="list">${arr.map(CARD[k]).join('')}</div>` : emptyBox(`لا توجد ${SECTIONS[k].label} ${grade ? 'للصف ' + esc(grade) : ''} حالياً.`);
+
+/* ============ الصفحات ============ */
+function home(){
+  theme('home');
+  const urgent = items('announcements').filter(a => a.urgent && dayDiff(a.date) >= -14).sort(SORT.announcements).slice(0, 3);
+  const hw = items('homework').filter(h => dayDiff(h.due || h.date) >= 0).sort(SORT.homework).slice(0, 4);
+  const ex = items('exams').filter(e => dayDiff(e.date) >= 0).sort(SORT.exams).slice(0, 3);
+  const ev = (D.events || []).filter(e => dayDiff(e.date) >= 0).sort(SORT.events).slice(0, 3);
+  const ann = items('announcements').filter(a => !urgent.includes(a)).sort(SORT.announcements).slice(0, 3);
+  const les = items('lessons').sort(SORT.lessons).slice(0, 3);
+  const count = k => k === 'contact' ? (D.staff || []).length : k === 'events' ? ev.length : items(k).length;
+  return `
+    ${PREVIEW ? '<div class="notice">أنت تشاهد معاينة المسودة المحفوظة في لوحة الإدارة على هذا الجهاز. لن يراها الآخرون قبل رفع ملف المحتوى.</div>' : ''}
+    ${urgent.map(a => `<div class="urgent fade"><span style="font-size:24px">📢</span><div><b>${esc(a.title)}</b><div>${rich(a.body)}</div></div></div>`).join('')}
+    <div class="tiles">${Object.entries(SECTIONS).map(([k, s]) => `
+      <a class="tile fade" href="#/${k}" style="background:${s.c}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
+    </div>
+    <div class="cols">
+      <div><h2 class="sec" style="--sec:#1F3B2D">✏️ واجبات قريبة</h2>${hw.length ? `<div class="list">${hw.map(CARD.homework).join('')}</div>` : emptyBox('لا توجد واجبات قادمة.')}</div>
+      <div><h2 class="sec" style="--sec:#1E2F4A">📝 امتحانات قادمة</h2>${ex.length ? `<div class="list">${ex.map(CARD.exams).join('')}</div>` : emptyBox('لا توجد امتحانات قادمة.')}</div>
+    </div>
+    <div class="cols">
+      <div><h2 class="sec" style="--sec:#7A1212">📢 آخر التبليغات</h2>${ann.length ? `<div class="list">${ann.map(CARD.announcements).join('')}</div>` : emptyBox('لا توجد تبليغات أخرى.')}</div>
+      <div><h2 class="sec" style="--sec:#3B2A1A">🎉 المناسبات القادمة</h2>${ev.length ? `<div class="list">${ev.map(CARD.events).join('')}</div>` : emptyBox('لا توجد مناسبات قادمة.')}</div>
+    </div>
+    <h2 class="sec" style="--sec:#5B4326">🎬 أحدث الدروس</h2>${listOf('lessons', les)}`;
+}
+function section(k){
+  theme(k);
+  const s = SECTIONS[k], hasSub = ['homework', 'exams', 'lessons'].includes(k);
+  const st = store.get('wx-f-' + k) || {};
+  return `
+    <h2 class="sec" style="margin-top:4px">${s.icon} ${s.label}</h2>
+    <div class="filters">
+      <input id="q" placeholder="ابحث في ${s.label}…" value="${esc(st.q || '')}">
+      ${hasSub ? `<select id="sub"><option value="">كل المواد</option>${D.subjects.map(x => `<option${st.sub === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>` : '<span></span>'}
+    </div>
+    <div id="res"></div>`;
+}
+function fillSection(k){
+  const run = () => {
+    const q = ($('#q').value || '').trim(), sub = $('#sub')?.value || '';
+    store.set('wx-f-' + k, {q, sub});
+    let arr = (k === 'events' ? (D.events || []) : items(k)).filter(it => (!sub || it.subject === sub) && (!q || (it.title + ' ' + (it.body || '')).includes(q)));
+    arr = arr.slice().sort(SORT[k]);
+    if(k === 'events'){
+      const up = arr.filter(e => dayDiff(e.date) >= 0), past = arr.filter(e => dayDiff(e.date) < 0).reverse();
+      $('#res').innerHTML = (up.length ? `<div class="list">${up.map(CARD.events).join('')}</div>` : emptyBox('لا توجد مناسبات قادمة.')) +
+        (past.length ? `<h2 class="sec">مناسبات سابقة</h2><div class="list" style="opacity:.8">${past.map(CARD.events).join('')}</div>` : '');
+    } else $('#res').innerHTML = listOf(k, arr);
+  };
+  $('#q').oninput = run; if($('#sub')) $('#sub').onchange = run; run();
+}
+function lesson(id){
+  theme('lessons');
+  const it = (D.lessons || []).find(l => l.id === id);
+  if(!it) return emptyBox('الدرس غير موجود.');
+  return `
+    <a class="btn" href="#/lessons">→ كل الدروس</a>
+    <h2 class="sec">${esc(it.title)}</h2>
+    <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId(it.link)}" title="${esc(it.title)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+    <div class="card" style="margin-top:12px"><div class="meta">${tags(it)}</div><div class="body">${rich(it.body)}</div></div>`;
+}
+
+/* ============ التواصل الخاص ============ */
+function contact(){
+  theme('contact');
+  const sc = D.school;
+  const staff = (D.staff || []).filter(s => !grade || !s.grades || s.grades.includes(grade));
+  const reach = s => s.whatsapp || s.telegram;
+  return `
+    <h2 class="sec" style="margin-top:4px">💬 التواصل مع المدرسة</h2>
+    <div class="cols">
+      <div class="panel">
+        <h3>مراسلة خاصة</h3>
+        <p class="muted">تُكتب الرسالة هنا ثم تُرسل مباشرة إلى المعلم أو الإدارة عبر واتساب أو تلكرام، ولا يحتفظ الموقع بأي بيانات.</p>
+        <div class="grid">
+          <div class="full"><label>إلى</label><select id="to">${staff.filter(reach).map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.subjects ? ' — ' + esc(s.subjects) : ''}</option>`).join('') || '<option value="">لم تُضف أرقام تواصل بعد</option>'}</select></div>
+          <div><label>اسم ولي الأمر</label><input id="pn" autocomplete="name"></div>
+          <div><label>اسم التلميذ</label><input id="sn"></div>
+          <div><label>الصف</label><select id="sg">${D.grades.map(g => `<option${g === grade ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
+          <div><label>الشعبة</label><input id="ss" placeholder="مثال: أ"></div>
+          <div class="full"><label>الرسالة</label><textarea id="msg"></textarea></div>
+        </div>
+        <div id="err"></div>
+        <div class="row" style="margin-top:12px"><button class="pri" id="send">إرسال الرسالة</button></div>
+      </div>
+      <div>
+        <div class="card" style="--c:#1E2F4A">
+          <h3>🏫 ${esc(sc.name)}</h3>
+          <div class="body">${sc.address ? '📍 ' + esc(sc.address) + '<br>' : ''}${sc.phone ? '☎️ <a href="tel:' + esc(sc.phone) + '" dir="ltr">' + esc(toAr(sc.phone)) + '</a><br>' : ''}${sc.hours ? '🕘 أوقات الدوام: ' + esc(sc.hours) : ''}</div>
+        </div>
+        <h2 class="sec">الكادر</h2>
+        <div class="list">${staff.map(s => `
+          <div class="card" style="--c:#1E2F4A">
+            <h3>${esc(s.name)}</h3>
+            <div class="meta"><span class="tag">${esc(s.role)}</span>${s.subjects ? `<span class="tag">${esc(s.subjects)}</span>` : ''}${s.grades ? `<span class="tag">الصفوف: ${esc(s.grades)}</span>` : ''}</div>
+            ${reach(s) ? '' : '<div class="muted">لم يُضف رقم تواصل بعد.</div>'}
+          </div>`).join('') || emptyBox('لم يُضف الكادر بعد.')}</div>
+      </div>
+    </div>`;
+}
+function wireContact(){
+  $('#send').onclick = async () => {
+    const s = (D.staff || []).find(x => x.id === $('#to').value);
+    const v = id => $(id).value.trim();
+    if(!s) return $('#err').innerHTML = '<div class="alert">لا توجد جهة تواصل متاحة.</div>';
+    if(!v('#pn') || !v('#sn') || !v('#msg')) return $('#err').innerHTML = '<div class="alert">اكتب اسمك واسم التلميذ ونص الرسالة.</div>';
+    $('#err').innerHTML = '';
+    const text = `السلام عليكم ${s.name}\nأنا ${v('#pn')}، ولي أمر التلميذ/ة ${v('#sn')} — الصف ${$('#sg').value}${v('#ss') ? ' / ' + v('#ss') : ''}\n\n${v('#msg')}\n\n(مرسلة من بوابة ${D.school.name})`;
+    if(s.whatsapp){
+      window.open('https://wa.me/' + s.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+    } else {
+      try{ await navigator.clipboard.writeText(text); toast('نُسخت الرسالة، الصقها في تلكرام'); }catch(_){}
+      window.open('https://t.me/' + s.telegram.replace(/^@/, ''), '_blank', 'noopener');
+    }
+  };
+}
+
+/* ============ التوجيه ============ */
+function route(){
+  const [, k = '', id] = location.hash.match(/^#\/?([\w-]*)\/?(.*)$/) || [];
+  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons')));
+  const v = $('#view');
+  if(k === 'contact'){ v.innerHTML = contact(); wireContact(); }
+  else if(k === 'lesson') v.innerHTML = lesson(decodeURIComponent(id));
+  else if(CARD[k]){ v.innerHTML = section(k); fillSection(k); }
+  else v.innerHTML = home();
+  v.classList.remove('fade'); void v.offsetWidth; v.classList.add('fade');
+  $('#nav a.on')?.scrollIntoView({inline:'center', block:'nearest'});
+}
+window.addEventListener('hashchange', () => { route(); window.scrollTo({top: $('.topnav').offsetTop, behavior:'smooth'}); });
+route();
 </script>
 </body>
 </html>

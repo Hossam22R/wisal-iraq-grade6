@@ -1,0 +1,102 @@
+/* هوية بوابة مدارس براعم كربلاء — خط Cairo واتجاه من اليمين لليسار */
+:root{
+  --ink:#1A1511;--brown:#4A3A28;--brown2:#5B4326;--paper:#ECDCB6;--card:#F4E8CB;--line:#8A6F45;
+  --red:#7A1212;--cream:#F1E4C3;--light:#FBF5E6;--sand:#E8D5AE;--yellow:#F6E3A1;--olive:#DCE9D5;
+  --sky:#D5E4F3;--dk:#3B2A1A;--green:#1F3B2D;--navy:#1E2F4A;
+  --sec:var(--green);--secbg:var(--olive);--glow:#39FF14;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100vh;font-family:'Cairo',Tahoma,sans-serif;color:var(--ink);background:var(--secbg);transition:background .4s}
+a{color:inherit}
+button,select,input,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+button,.btn{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--light);padding:8px 16px;border-radius:12px;cursor:pointer;text-decoration:none;font-weight:700;font-size:15px;transition:transform .12s,background .2s}
+button:active,.btn:active{transform:scale(.97)}
+button:disabled,.btn.off{opacity:.45;cursor:default;pointer-events:none}
+.pri{background:var(--sec);color:var(--light);border-color:var(--sec)}
+.warn{border-color:var(--red);color:var(--red)}
+.sm{padding:4px 10px;font-size:13px;border-radius:9px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px}
+textarea{resize:vertical;min-height:90px;line-height:1.8}
+input:focus,select:focus,textarea:focus,button:focus-visible,.btn:focus-visible{outline:3px solid color-mix(in srgb,var(--sec) 35%,transparent);outline-offset:1px}
+label{display:block;font-size:14px;font-weight:700;color:var(--brown);margin-bottom:4px}
+.wrap{width:100%;max-width:1100px;margin:0 auto;padding:0 16px}
+.muted{color:var(--brown2);font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ===== الرأس الكبير ===== */
+.hero{position:relative;overflow:hidden;background:var(--sec);color:var(--light);padding:26px 0 30px;transition:background .4s}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;border:2px solid rgba(251,245,230,.14);pointer-events:none}
+.hero::before{width:520px;height:520px;left:-160px;top:-260px}
+.hero::after{width:300px;height:300px;left:12%;bottom:-210px;border-width:30px;border-color:rgba(251,245,230,.06)}
+.hero .frame{position:relative;border:3px double rgba(251,245,230,.55);border-radius:22px;padding:22px 24px}
+.hero .frame::before,.hero .frame::after{content:"";position:absolute;width:14px;height:14px;background:var(--cream);transform:rotate(45deg)}
+.hero .frame::before{top:-8px;right:-8px}.hero .frame::after{bottom:-8px;left:-8px}
+.hero .kicker{font-weight:700;font-size:15px;opacity:.85;display:flex;align-items:center;gap:8px}
+.hero h1{margin:4px 0 2px;font-weight:900;font-size:clamp(34px,7vw,66px);line-height:1.15;letter-spacing:-.5px}
+.hero h1 small{display:block;font-size:.42em;font-weight:700;opacity:.9;letter-spacing:0}
+.hero p{margin:6px 0 0;font-size:17px;opacity:.92;max-width:640px}
+.node{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--glow);box-shadow:0 0 0 4px rgba(255,255,255,.12),0 0 16px 4px var(--glow)}
+
+/* ===== شريط الأقسام ===== */
+.topnav{position:sticky;top:0;z-index:5;background:var(--light);border-bottom:2px solid var(--line);box-shadow:0 6px 18px rgba(26,21,17,.08)}
+.topnav .wrap{display:flex;gap:6px;overflow-x:auto;padding-top:8px;padding-bottom:8px;scrollbar-width:thin}
+.topnav a{flex:none;text-decoration:none;font-weight:700;font-size:15px;padding:7px 14px;border-radius:30px;border:2px solid transparent;white-space:nowrap}
+.topnav a:hover{border-color:var(--line)}
+.topnav a.on{background:var(--sec);color:var(--light)}
+
+/* ===== شريط الصفوف ===== */
+.grades{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+.grades button{background:rgba(251,245,230,.12);color:var(--light);border-color:rgba(251,245,230,.4);border-radius:30px;padding:5px 14px;font-size:14px}
+.grades button.on{background:var(--light);color:var(--sec);border-color:var(--light)}
+
+main{padding:22px 0 40px}
+h2.sec{display:flex;align-items:center;gap:10px;margin:26px 0 12px;font-weight:900;font-size:26px;color:var(--sec)}
+h2.sec::after{content:"";flex:1;height:0;border-top:3px double var(--line);opacity:.6}
+h3{margin:0 0 4px;font-size:19px;font-weight:900;color:var(--ink)}
+
+/* ===== بلاطات الأقسام في الرئيسية ===== */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}
+.tile{position:relative;overflow:hidden;display:block;text-decoration:none;color:var(--light);border-radius:18px;padding:16px;min-height:118px;box-shadow:0 10px 22px rgba(26,21,17,.16);transition:transform .2s}
+.tile:hover{transform:translateY(-3px)}
+.tile .ic{font-size:30px}
+.tile b{display:block;font-size:18px;font-weight:900;margin-top:4px}
+.tile .cnt{position:absolute;left:12px;top:12px;min-width:38px;text-align:center;font-size:20px;font-weight:900;background:rgba(251,245,230,.18);border:1px solid rgba(251,245,230,.35);border-radius:20px;padding:0 10px}
+.tile::after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;border:16px solid rgba(255,255,255,.08);left:-40px;bottom:-60px}
+
+/* ===== البطاقات ===== */
+.list{display:grid;gap:12px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{position:relative;background:var(--light);border:1.5px solid var(--line);border-right:7px solid var(--c,var(--sec));border-radius:16px;padding:14px 16px;box-shadow:0 6px 14px rgba(26,21,17,.06)}
+.card.feat{border:4px double var(--c,var(--sec))}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 6px}
+.card .body{line-height:1.9;font-size:16px;margin:6px 0}
+.card .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.tag{display:inline-block;font-size:13px;font-weight:700;padding:1px 10px;border-radius:20px;background:var(--card);border:1px solid var(--line)}
+.tag.hot{background:var(--red);color:var(--light);border-color:var(--red)}
+.tag.ok{background:var(--olive);border-color:var(--green);color:var(--green)}
+.tag.late{background:#F6DEDA;border-color:var(--red);color:var(--red)}
+.tag.new{background:var(--yellow);border-color:var(--brown2)}
+.urgent{background:var(--red);color:var(--light);border-radius:16px;padding:12px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+.urgent b{font-weight:900}
+.cal{flex:none;width:64px;text-align:center;border-radius:12px;background:var(--c,var(--sec));color:var(--light);padding:6px 0;line-height:1.2}
+.cal .d{font-size:26px;font-weight:900}.cal .m{font-size:12px}
+.evt{display:flex;gap:14px;align-items:flex-start}
+.thumb{width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:8px;border:1px solid var(--line)}
+.video{position:relative;padding-top:56.25%;border-radius:14px;overflow:hidden;background:#000;border:3px double var(--sec)}
+.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.filters{display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:12px}
+.empty{text-align:center;padding:34px 16px;border:2px dashed var(--line);border-radius:16px;color:var(--brown2);background:rgba(251,245,230,.6)}
+.notice{background:var(--yellow);border:1px solid var(--brown2);border-radius:12px;padding:10px 14px;font-size:15px;margin-bottom:12px}
+.alert{background:#F6DEDA;border:1px solid var(--red);color:var(--red);border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
+.panel{background:var(--light);border:3px double var(--sec);border-radius:18px;padding:18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.grid .full{grid-column:1/-1}
+footer{background:var(--ink);color:var(--cream);text-align:center;padding:16px;font-size:13px}
+footer a{color:var(--cream)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--light);padding:10px 20px;border-radius:12px;font-weight:700;z-index:20;animation:up .3s}
+.fade{animation:up .4s ease both}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:760px){.cols,.grid,.filters{grid-template-columns:1fr}.hero .frame{padding:16px}h2.sec{font-size:22px}}
+@media print{.topnav,.hero .grades,footer,.acts{display:none}body{background:#fff}}
