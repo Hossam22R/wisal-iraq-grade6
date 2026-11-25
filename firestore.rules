@@ -1,0 +1,116 @@
+rules_version = '2';
+// قواعد حماية بوابة مدارس براعم كربلاء الأهلية
+// المالك: كل الصلاحيات. المشرف: ينشر ويعدّل ويحذف منشوراته واختباراته فقط، ويقرأ الرسائل الموجهة إليه.
+// التلاميذ وأولياء الأمور: دخول مجهول تلقائي، يرسلون المحاولات والرسائل فقط.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAnon() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+    function userDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function isStaff() { return signedIn() && !isAnon() && exists(userDoc()) && get(userDoc()).data.active == true; }
+    function isOwner() { return isStaff() && get(userDoc()).data.role == 'owner'; }
+    function str(v, n) { return v is string && v.size() <= n; }
+    function onlyKeys(keys) { return request.resource.data.keys().hasOnly(keys); }
+    function changed(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+
+    // تسجيل المالك الأول مرة واحدة فقط
+    match /meta/owner {
+      allow read: if true;
+      allow create: if signedIn() && !isAnon() && onlyKeys(['uid', 'at']) && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // حسابات الإدارة والمشرفين
+    match /users/{uid} {
+      allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow create: if
+        (signedIn() && !isAnon() && uid == request.auth.uid
+          && !exists(/databases/$(database)/documents/meta/owner)
+          && getAfter(/databases/$(database)/documents/meta/owner).data.uid == request.auth.uid
+          && request.resource.data.role == 'owner' && request.resource.data.active == true)
+        || (isOwner() && request.resource.data.role == 'supervisor');
+      // المالك لا يستطيع إلغاء صلاحيته بنفسه
+      allow update: if isOwner() && (uid != request.auth.uid || (request.resource.data.role == 'owner' && request.resource.data.active == true));
+      allow delete: if false;
+    }
+
+    // دليل التواصل العام (من يستقبل الرسائل)
+    match /directory/{uid} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // بيانات المدرسة والمراحل
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // المنشورات: التبليغات والواجبات والامتحانات والدروس والمناسبات والنشاطات
+    function validPost() {
+      return request.resource.data.type in ['announcements', 'homework', 'exams', 'lessons', 'events', 'activities']
+        && str(request.resource.data.title, 200)
+        && (!('body' in request.resource.data) || str(request.resource.data.body, 6000));
+    }
+    match /posts/{id} {
+      allow read: if true;
+      allow create: if isStaff() && request.resource.data.authorUid == request.auth.uid && validPost();
+      allow update: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid)
+        && request.resource.data.authorUid == resource.data.authorUid && validPost();
+      allow delete: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid);
+    }
+
+    // الاختبارات والواجبات الإلكترونية (الأسئلة بلا إجابات في الوضع المحمي)
+    match /exams/{id} {
+      allow read: if true;
+      allow create: if isStaff() && request.resource.data.authorUid == request.auth.uid && str(request.resource.data.title, 200);
+      allow update: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid)
+        && request.resource.data.authorUid == resource.data.authorUid;
+      allow delete: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid);
+    }
+    // مفاتيح الإجابات للاختبارات المحمية: يقرؤها الكادر فقط
+    match /examKeys/{id} {
+      allow read: if isStaff();
+      allow create, update: if isStaff() && (isOwner() || getAfter(/databases/$(database)/documents/exams/$(id)).data.authorUid == request.auth.uid);
+      allow delete: if isStaff() && (isOwner() || get(/databases/$(database)/documents/exams/$(id)).data.authorUid == request.auth.uid);
+    }
+
+    // محاولات التلاميذ
+    match /attempts/{id} {
+      allow get: if signedIn();
+      allow list: if isStaff();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && onlyKeys(['examId', 'uid', 'name', 'grade', 'section', 'answers', 'order', 'startedAt', 'submittedAt', 'leaves', 'timeout'])
+        && str(request.resource.data.name, 80) && str(request.resource.data.section, 20)
+        && request.resource.data.answers is list && request.resource.data.answers.size() <= 200
+        && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.status == 'open';
+      allow update: if isStaff() && changed(['result']);
+      allow delete: if isOwner();
+    }
+
+    // الرسائل الخاصة: محادثة لكل ولي أمر برمز سري
+    match /threads/{tid} {
+      allow get: if signedIn();
+      allow list: if isOwner() || (isStaff() && resource.data.to == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.parentUid == request.auth.uid
+        && onlyKeys(['to', 'toName', 'parentUid', 'parentName', 'studentName', 'grade', 'section', 'createdAt', 'updatedAt', 'lastFrom', 'unreadStaff', 'unreadParent', 'status'])
+        && exists(/databases/$(database)/documents/directory/$(request.resource.data.to))
+        && str(request.resource.data.parentName, 80) && str(request.resource.data.studentName, 80)
+        && str(request.resource.data.section, 20);
+      allow update: if signedIn() && changed(['updatedAt', 'lastFrom', 'unreadStaff', 'unreadParent', 'status']);
+      allow delete: if isOwner();
+
+      match /msgs/{mid} {
+        allow read: if signedIn();
+        allow create: if signedIn() && onlyKeys(['from', 'text', 'at', 'by', 'byName'])
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 3000
+          && existsAfter(/databases/$(database)/documents/threads/$(tid))
+          && (request.resource.data.from == 'parent'
+            || (request.resource.data.from == 'staff' && request.resource.data.by == request.auth.uid
+                && (isOwner() || (isStaff() && get(/databases/$(database)/documents/threads/$(tid)).data.to == request.auth.uid))));
+        allow update, delete: if false;
+      }
+    }
+  }
+}

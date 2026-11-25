@@ -7,6 +7,7 @@
 <title>الامتحانات الإلكترونية</title>
 <meta name="theme-color" content="#0B1220">
 <script src="data/content.js"></script>
+<script src="assets/firebase-config.js"></script>
 <style>
 /* الواجهة التقنية الداكنة نفسها المستخدمة في البوابة */
 :root{--olive:#0B1220;--cream:#111A2B;--card:#16223A;--green:#00E5FF;--ink:#EAF2FF;--brown:#9FB0C8;--line:rgba(160,190,230,.3);--red:#FF5C8A;--gold:#FFEB00;--okbg:rgba(57,255,20,.12);--badbg:rgba(255,46,147,.12);--glass:rgba(255,255,255,.05)}
@@ -163,11 +164,11 @@ const TYPES = { mc:'اختيار من متعدد', tf:'صح أو خطأ', fill:'
 const newQ = (t='mc') => t === 'mc' ? {t, q:'', opts:['','','',''], a:0, m:1}
                        : t === 'tf' ? {t, q:'', a:true, m:1}
                        : {t, q:'', a:'', m:1};
-const SCH = window.SCHOOL || null;
-const SCHOOL_NAME = (SCH && SCH.school.name) || 'مدارس براعم كربلاء الأهلية';
-const blankExam = () => ({ v:1, school:SCHOOL_NAME, subject:'', grade:'', title:'', minutes:20, shuffle:true, review:true, qs:[newQ()] });
+let SCH = window.SCHOOL || null;
+let SCHOOL_NAME = (SCH && SCH.school.name) || 'مدارس براعم كربلاء الأهلية';
+const blankExam = () => ({ v:1, school:SCHOOL_NAME, subject:'', grade:'', title:'', minutes:20, shuffle:true, review:true, type:'exam', mode:'instant', date:new Date().toISOString().slice(0,10), due:'', qs:[newQ()] });
 let exam = store.get('wx-draft') || blankExam();
-const saveDraft = () => store.set('wx-draft', exam);
+const saveDraft = () => store.set(exam._id ? 'wx-edit-' + exam._id : 'wx-draft', exam);
 const totalMarks = ex => ex.qs.reduce((s,q) => s + (+q.m || 0), 0);
 
 /* ============ الواجهة الرئيسية ============ */
@@ -190,6 +191,7 @@ function home(){
     $('#back').onclick = home;
     $('#open').onclick = () => {
       const v = $('#lnk').value.trim(); const i = v.indexOf('#exam=');
+      const m = v.match(/[?&]id=([\w-]+)/); if(m){ location.href = 'exams.html?id=' + m[1]; return; }
       if(i < 0){ $('#err').innerHTML = '<div class="alert">الرابط غير صحيح، تأكد من نسخه كاملاً.</div>'; return; }
       location.hash = v.slice(i+1); route();
     };
@@ -216,6 +218,7 @@ function editor(){
         <label class="check"><input type="checkbox" data-k="review"> عرض التصحيح للتلميذ بعد التسليم</label>
       </div>
     </div>
+    ${window.LX ? LX.editorBlock() : ''}
     <div id="qs"></div>
     <div class="row" style="margin-top:12px">
       <button data-add="mc">+ اختيار من متعدد</button><button data-add="tf">+ صح أو خطأ</button><button data-add="fill">+ املأ الفراغ</button>
@@ -225,7 +228,7 @@ function editor(){
         <b id="sum"></b>
         <div class="row">
           <button id="prev">معاينة كتلميذ</button>
-          <button class="pri" id="pub">إنشاء رابط الامتحان</button>
+          ${window.LX ? '' : '<button class="pri" id="pub">إنشاء رابط الامتحان</button>'}
         </div>
       </div>
       <div class="row" style="margin-top:10px">
@@ -243,7 +246,7 @@ function editor(){
   });
   app.querySelectorAll('[data-add]').forEach(b => b.onclick = () => { exam.qs.push(newQ(b.dataset.add)); saveDraft(); drawQs(); app.querySelector('.qcard:last-child textarea')?.focus(); });
   $('#prev').onclick = async () => { const err = validate(); if(err) return showErr(err); startStudent(JSON.parse(JSON.stringify(exam)), true); };
-  $('#pub').onclick = publish;
+  if($('#pub')) $('#pub').onclick = publish;
   $('#exp').onclick = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(exam, null, 1)], {type:'application/json'}));
@@ -256,6 +259,7 @@ function editor(){
   };
   $('#clr').onclick = async () => { if(await ask('سيتم حذف المسودة الحالية. هل أنت متأكد؟', 'نعم، ابدأ من جديد')){ exam = blankExam(); saveDraft(); editor(); } };
   drawQs();
+  window.LX?.wireEditor();
 }
 function showErr(t){ $('#out').innerHTML = `<div class="alert">${esc(t)}</div>`; }
 function drawQs(){
@@ -368,7 +372,7 @@ function startStudent(ex, preview=false, key=''){
   setHeader(ex.school || 'الامتحانات الإلكترونية', preview ? `<button id="hBack">رجوع إلى المحرّر</button>` : '');
   if(preview) $('#hBack').onclick = () => { clearInterval(tick); editor(); };
   const saved = !preview && store.get('wx-run-' + key);
-  if(saved && saved.done){ S = saved; S.ex = ex; return result(); }
+  if(saved && saved.done){ S = saved; S.ex = ex; return S.live ? LX.afterDone() : result(); }
   if(saved){ S = saved; S.ex = ex; return quiz(); }
   const total = totalMarks(ex);
   app.innerHTML = `
@@ -392,7 +396,7 @@ function startStudent(ex, preview=false, key=''){
     if(name.split(/\s+/).length < 2){ $('#err').innerHTML = '<div class="alert">اكتب اسمك الثلاثي أولاً.</div>'; $('#nm').focus(); return; }
     const order = ex.shuffle ? shuffle(ex.qs.map((_, i) => i)) : ex.qs.map((_, i) => i);
     const optOrder = ex.qs.map(q => q.t === 'mc' ? (ex.shuffle ? shuffle(q.opts.map((_, j) => j)) : q.opts.map((_, j) => j)) : null);
-    S = { key, preview, ex, name, sec: $('#sec').value.trim(), order, optOrder, ans: ex.qs.map(() => null), cur: 0, start: Date.now(), leaves: 0, done: false };
+    S = { key, preview, ex, name, sec: $('#sec').value.trim(), order, optOrder, ans: ex.qs.map(() => null), cur: 0, start: Date.now(), leaves: 0, done: false, live: !!ex._id && !preview };
     persist(); quiz();
   };
 }
@@ -452,7 +456,9 @@ function correct(q, a){
 function submit(timeout){
   clearInterval(tick);
   S.done = true; S.timeout = timeout; S.end = Math.min(Date.now(), S.ex.minutes ? S.start + S.ex.minutes*60000 : Infinity);
-  persist(); result();
+  persist();
+  if(S.live) return LX.onSubmit();
+  result();
 }
 function result(){
   const ex = S.ex, total = totalMarks(ex);
@@ -484,6 +490,7 @@ function result(){
         <tr><td>الإجابات الصحيحة</td><td>${toAr(nOk)} من ${toAr(ex.qs.length)}</td></tr>
         <tr><td>التاريخ والمدة</td><td>${date}، ${toAr(Math.max(1, dur))} دقيقة${S.timeout ? ' (انتهى الوقت)' : ''}</td></tr>
         <tr><td>مغادرة الصفحة</td><td>${S.leaves ? toAr(S.leaves) + ' مرة' : 'لا يوجد'}</td></tr>
+        ${S.attemptId ? `<tr><td>رمز المحاولة</td><td dir="ltr" style="text-align:right">${esc(S.attemptId)}</td></tr>` : ''}
       </table>
       <p class="muted" style="text-align:center;margin-bottom:0">رمز التحقق: ${toAr(hashOf(S.name + got + S.end).toUpperCase())}</p>
     </div>
@@ -514,7 +521,9 @@ async function route(){
   }
 }
 window.addEventListener('hashchange', () => { if(!S || S.done || S.preview) route(); });
-route();
+/* مع قاعدة البيانات تتولى exams-live.js التوجيه، وبدونها يعمل الرابط المرمّز كما كان */
+if(window.FIREBASE_CONFIG) import('./assets/exams-live.js').catch(e => { app.innerHTML = '<h2>تعذّر تحميل المنصة</h2><p>تحقق من الاتصال بالإنترنت ثم أعد تحميل الصفحة.</p>'; console.error(e); });
+else route();
 </script>
 </body>
 </html>

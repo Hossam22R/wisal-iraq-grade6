@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/common.js"></script>
 <script src="data/content.js"></script>
+<script src="assets/firebase-config.js"></script>
 </head>
 <body>
 <section class="hero">
@@ -32,10 +33,12 @@
 <main class="wrap" id="view"></main>
 <footer>© مؤسسة وصال التعليمية · إعداد: حسام الجنابي</footer>
 
-<script>
+<script type="module">
+import {LIVE, init, loadSite, F, db, auth, ensureAnon, now, tsText, errText} from './assets/db.js';
 /* ============ البيانات والاختيار ============ */
 const PREVIEW = /[?&]preview\b/.test(location.search);
-const D = (PREVIEW && store.get(DRAFT_KEY)) || window.SCHOOL;
+let D = (PREVIEW && store.get(DRAFT_KEY)) || window.SCHOOL;
+if(LIVE){ try{ await init(); D = await loadSite(); }catch(e){ console.error(e); D.loadError = true; } }
 let sel = store.get('wx2-sel') || {stage:'', grade:''};
 if(sel.grade && !allGrades(D).includes(sel.grade)) sel = {stage:'', grade:''};
 if(sel.stage && !D.stages.some(s => s.name === sel.stage)) sel = {stage:'', grade:''};
@@ -104,7 +107,7 @@ const CARD = {
       <div class="meta">${isNew(it) ? '<span class="tag new">جديد</span>' : ''}${tags(it)}${due}</div>
       <div class="body">${rich(it.body)}</div>
       <div class="muted">أُعطي ${fmtDate(it.date)}${it.due ? '، وآخر موعد ' + fmtDate(it.due) : ''}</div>
-      <div class="acts">${linkBtn(it.link, /#exam=/.test(it.link) ? '✏️ حلّ الواجب الآن' : 'فتح الرابط')}</div>
+      <div class="acts">${linkBtn(it.link, (it.examId || /#exam=/.test(it.link)) ? '✏️ حلّ الواجب الآن' : 'فتح الرابط')}</div>
     </article>`;
   },
   exams: it => {
@@ -231,6 +234,121 @@ function lesson(id){
 /* ============ التواصل الخاص ============ */
 const LEAD = /المشرف|مدير/;
 const reach = s => s.whatsapp || s.telegram;
+
+/* ============ الرسائل الخاصة داخل الموقع (مع قاعدة البيانات) ============ */
+const myThreads = () => store.get('wx-threads') || [];
+const keepThread = id => store.set('wx-threads', [id, ...myThreads().filter(x => x !== id)].slice(0, 20));
+let chatUnsub = null;
+function contactLive(){
+  theme('contact');
+  const st = sel.stage || stageOf(D, sel.grade);
+  const staff = (D.staff || []).filter(s => !st || !s.stage || s.stage === st);
+  return `
+    ${head('contact', 'التواصل مع المدرسة')}
+    <div class="cols">
+      <div class="panel">
+        <h3>🔒 رسالة خاصة جديدة</h3>
+        <p class="muted" style="line-height:1.9">تصل رسالتك إلى الجهة التي تختارها داخل الموقع، وتحصل على <b>رمز محادثة</b> خاص تتابع به الرد. ويحق لإدارة المدرسة الاطلاع على الرسائل.</p>
+        <form id="mf" class="grid">
+          <div class="full"><label for="to">إلى</label><select id="to">${staff.map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.role ? ' — ' + esc(s.role) : ''}${s.subjects ? '، ' + esc(s.subjects) : ''}</option>`).join('') || '<option value="">لا توجد جهات تستقبل الرسائل بعد</option>'}</select></div>
+          <div><label for="pn">اسم ولي الأمر</label><input id="pn" autocomplete="name" maxlength="80" required></div>
+          <div><label for="sn">اسم التلميذ أو الطالب</label><input id="sn" maxlength="80" required></div>
+          <div><label for="sg">الصف</label><select id="sg">${audienceOptions(D, sel.grade, {all:false, stages:false})}</select></div>
+          <div><label for="ss">الشعبة</label><input id="ss" maxlength="20" placeholder="مثال: أ"></div>
+          <div class="full"><label for="msg">الرسالة</label><textarea id="msg" maxlength="3000" required></textarea></div>
+          <div id="err" class="full"></div>
+          <div class="full"><button class="pri" id="send">إرسال الرسالة</button></div>
+        </form>
+      </div>
+      <div>
+        <div class="panel">
+          <h3>💬 محادثاتي</h3>
+          <div class="list" id="mine"><div class="muted">جارٍ التحميل…</div></div>
+          <form id="cf" class="row" style="margin-top:12px">
+            <input id="code" dir="ltr" placeholder="أدخل رمز المحادثة" style="flex:1;min-width:0" aria-label="رمز المحادثة">
+            <button>فتح</button>
+          </form>
+        </div>
+        <div class="card" style="--g:${G('contact')};margin-top:14px">
+          <h3>🏫 ${esc(D.school.name)}</h3>
+          <div class="body">${D.school.founded ? '✨ تأسست عام ' + toAr(D.school.founded) + '<br>' : ''}${D.school.address ? '📍 ' + esc(D.school.address) + '<br>' : ''}${D.school.phone ? '☎️ <span dir="ltr">' + esc(toAr(D.school.phone)) + '</span><br>' : ''}${D.school.hours ? '🕘 أوقات الدوام: ' + esc(D.school.hours) : ''}</div>
+        </div>
+      </div>
+    </div>`;
+}
+async function wireContactLive(){
+  $('#mf').onsubmit = async e => {
+    e.preventDefault();
+    const v = id => $(id).value.trim(), to = (D.staff || []).find(s => s.id === $('#to').value);
+    if(!to) return $('#err').innerHTML = '<div class="alert">لا توجد جهة تستقبل الرسائل بعد.</div>';
+    if(!v('#pn') || !v('#sn') || !v('#msg')) return $('#err').innerHTML = '<div class="alert">اكتب اسمك واسم التلميذ ونص الرسالة.</div>';
+    const b = $('#send'); b.disabled = true;
+    try{
+      const u = await ensureAnon();
+      const t = F.doc(F.collection(db, 'threads'));
+      const w = F.writeBatch(db);
+      w.set(t, {to: to.id, toName: to.name, parentUid: u.uid, parentName: v('#pn'), studentName: v('#sn'), grade: $('#sg').value, section: v('#ss'),
+        createdAt: now(), updatedAt: now(), lastFrom: 'parent', unreadStaff: true, unreadParent: false, status: 'open'});
+      w.set(F.doc(F.collection(db, 'threads', t.id, 'msgs')), {from: 'parent', text: v('#msg'), at: now(), by: u.uid, byName: v('#pn')});
+      await w.commit();
+      keepThread(t.id); location.hash = 'chat-' + t.id;
+    }catch(x){ b.disabled = false; $('#err').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+  };
+  $('#cf').onsubmit = e => { e.preventDefault(); const c = $('#code').value.trim().replace(/^.*chat-/, ''); if(c) location.hash = 'chat-' + c; };
+  const ids = myThreads();
+  if(!ids.length){ $('#mine').innerHTML = '<div class="muted">لا توجد محادثات على هذا الجهاز بعد.</div>'; return; }
+  try{
+    await ensureAnon();
+    const th = (await Promise.all(ids.map(id => F.getDoc(F.doc(db, 'threads', id)).catch(() => null)))).filter(x => x && x.exists());
+    $('#mine').innerHTML = th.map(x => { const t = x.data(); return `
+      <a class="card thread" href="#chat-${x.id}" style="--g:${t.unreadParent ? '#FF2E93' : G('contact')};text-decoration:none;color:inherit">
+        <div><b style="color:#fff">إلى ${esc(t.toName)}</b><div class="muted">بخصوص ${esc(t.studentName)}، ${esc(tsText(t.updatedAt))}</div></div>
+        ${t.unreadParent ? '<span class="badge">رد جديد</span>' : t.lastFrom === 'staff' ? '<span class="pill on">تم الرد</span>' : '<span class="pill info">بانتظار الرد</span>'}
+      </a>`; }).join('') || '<div class="muted">لا توجد محادثات.</div>';
+  }catch(x){ $('#mine').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+}
+function chatView(id){
+  theme('contact');
+  return `
+    <a class="btn" href="#contact">→ التواصل</a>
+    ${head('contact', 'محادثة خاصة')}
+    <div id="chead" class="muted">جارٍ التحميل…</div>
+    <div class="notice" style="margin-top:10px">احتفظ برمز المحادثة لتتابع الرد من أي جهاز، ولا تشاركه مع أحد: <span class="code" id="cc">${esc(id)}</span> <button class="sm" id="cpc">نسخ</button></div>
+    <div class="chat" id="chat"></div>
+    <form id="rf" style="margin-top:12px">
+      <label for="rep">ردّك</label><textarea id="rep" maxlength="3000"></textarea>
+      <div id="err"></div>
+      <div class="row" style="margin-top:10px"><button class="pri" id="rs">إرسال</button></div>
+    </form>`;
+}
+async function wireChat(id){
+  $('#cpc').onclick = async () => { try{ await navigator.clipboard.writeText(id); toast('نُسخ الرمز'); }catch(_){ const r = document.createRange(); r.selectNodeContents($('#cc')); getSelection().removeAllRanges(); getSelection().addRange(r); } };
+  try{
+    await ensureAnon();
+    const ref = F.doc(db, 'threads', id), s = await F.getDoc(ref);
+    if(!s.exists()){ $('#view').innerHTML = emptyBox('لم نجد محادثة بهذا الرمز. تأكد من كتابته كما هو.') + '<p style="text-align:center"><a class="btn" href="#contact">رجوع</a></p>'; return; }
+    const t = s.data(); keepThread(id);
+    $('#chead').innerHTML = `إلى <b style="color:#fff">${esc(t.toName)}</b>، بخصوص ${esc(t.studentName)} — الصف ${esc(t.grade)}${t.section ? ' / ' + esc(t.section) : ''}${t.status === 'closed' ? ' <span class="pill off">أغلقت الإدارة المحادثة</span>' : ''}`;
+    if(t.unreadParent) F.updateDoc(ref, {unreadParent: false}).catch(() => {});
+    chatUnsub = F.onSnapshot(F.query(F.collection(db, 'threads', id, 'msgs'), F.orderBy('at')), q => {
+      const c = $('#chat'); if(!c) return;
+      c.innerHTML = q.docs.map(d => { const m = d.data(); return `<div class="bubble ${m.from === 'parent' ? 'me' : 'them'}">${esc(m.text)}<small>${esc(m.from === 'parent' ? 'أنت' : (m.byName || t.toName))}، ${esc(tsText(m.at))}</small></div>`; }).join('');
+      c.scrollTop = c.scrollHeight;
+    });
+    $('#rf').onsubmit = async e => {
+      e.preventDefault(); const text = $('#rep').value.trim(); if(!text) return;
+      const b = $('#rs'); b.disabled = true;
+      try{
+        const w = F.writeBatch(db);
+        w.set(F.doc(F.collection(db, 'threads', id, 'msgs')), {from: 'parent', text, at: now(), by: auth.currentUser.uid, byName: t.parentName});
+        w.update(ref, {updatedAt: now(), lastFrom: 'parent', unreadStaff: true, status: 'open'});
+        await w.commit(); $('#rep').value = '';
+      }catch(x){ $('#err').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+      b.disabled = false;
+    };
+  }catch(x){ $('#chead').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+}
+
 function contact(){
   theme('contact');
   const sc = D.school, st = sel.stage || stageOf(D, sel.grade);
@@ -292,9 +410,11 @@ function route(){
   /* روابط بسيطة مثل #homework و #lesson-l1 (والصيغة القديمة #/homework ما زالت تعمل) */
   const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   const [k, id] = h.startsWith('lesson') ? ['lesson', h.replace(/^lesson[-/]/, '')] : [h.split('/')[0], ''];
-  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons')));
+  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons') || (k.startsWith('chat-') && a.dataset.k === 'contact')));
   const v = $('#view');
-  if(k === 'contact'){ v.innerHTML = contact(); wireContact(); }
+  if(chatUnsub){ chatUnsub(); chatUnsub = null; }
+  if(k === 'contact'){ if(LIVE && !D.loadError){ v.innerHTML = contactLive(); wireContactLive(); } else { v.innerHTML = contact(); wireContact(); } }
+  else if(LIVE && k.startsWith('chat-')){ v.innerHTML = chatView(k.slice(5)); wireChat(k.slice(5)); }
   else if(k === 'lesson') v.innerHTML = lesson(id);
   else if(CARD[k]){ v.innerHTML = section(k); fillSection(k); }
   else v.innerHTML = home();
