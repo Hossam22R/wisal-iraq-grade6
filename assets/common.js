@@ -15,6 +15,7 @@ const DRAFT_KEY = 'wx2-admin-draft', BASE_KEY = 'wx2-admin-base';
 
 /* الأقسام: لون داكن من هوية براعم + لمعة نيون للإبراز */
 const SECTIONS = {
+  channels:     {label:'القنوات',            icon:'📣', c:'#123047', glow:'#00E5FF'},
   announcements:{label:'التبليغات',          icon:'📢', c:'#7A1212', glow:'#FF2E93'},
   homework:     {label:'الواجبات',           icon:'✏️', c:'#1F3B2D', glow:'#39FF14'},
   exams:        {label:'الامتحانات',         icon:'📝', c:'#1E2F4A', glow:'#00E5FF'},

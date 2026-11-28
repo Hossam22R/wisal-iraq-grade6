@@ -34,11 +34,22 @@
 <footer>© مؤسسة وصال التعليمية · إعداد: حسام الجنابي</footer>
 
 <script type="module">
-import {LIVE, init, loadSite, F, db, auth, ensureAnon, now, tsText, errText} from './assets/db.js';
+import {LIVE, init, loadSite, profile, F, db, auth, ensureAnon, now, tsText, errText} from './assets/db.js';
 /* ============ البيانات والاختيار ============ */
 const PREVIEW = /[?&]preview\b/.test(location.search);
 let D = (PREVIEW && store.get(DRAFT_KEY)) || window.SCHOOL;
 if(LIVE){ try{ await init(); D = await loadSite(); }catch(e){ console.error(e); D.loadError = true; } }
+window.P = null;
+if(LIVE && !D.loadError){
+  const p = await profile().catch(() => null);
+  window.P = p && p.active ? p : null;
+  /* المنشورات الجديدة تظهر فوراً دون تحديث الصفحة */
+  F.onSnapshot(F.collection(db, 'posts'), snap => {
+    Object.keys(SECTIONS).forEach(k => { if(Array.isArray(D[k])) D[k] = []; });
+    snap.docs.forEach(d => { const x = {id: d.id, ...d.data({serverTimestamps: 'estimate'})}; if(Array.isArray(D[x.type])) D[x.type].push(x); });
+    refreshLive();
+  }, e => console.error(e));
+}
 let sel = store.get('wx2-sel') || {stage:'', grade:''};
 if(sel.grade && !allGrades(D).includes(sel.grade)) sel = {stage:'', grade:''};
 if(sel.stage && !D.stages.some(s => s.name === sel.stage)) sel = {stage:'', grade:''};
@@ -181,6 +192,7 @@ function home(){
   return `
     ${PREVIEW ? '<div class="notice">أنت تشاهد معاينة المسودة المحفوظة في لوحة الإدارة على هذا الجهاز. لن يراها الآخرون قبل رفع ملف المحتوى.</div>' : ''}
     ${urgent.map(a => `<div class="urgent fade"><span class="node"></span><div><b>${esc(a.title)}</b> <span class="tag" style="color:#fff">${esc(audienceLabel(a.grade))}</span><div>${rich(a.body)}</div></div></div>`).join('')}
+    ${sel.grade ? `<div class="list" style="margin-bottom:12px">${chRow(chKeyOf(sel.grade))}</div>` : ''}
     <div class="tiles">${Object.entries(SECTIONS).map(([k, s]) => `
       <a class="tile fade" href="#${k}" style="--c:${s.c};--g:${s.glow}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
     </div>
@@ -406,16 +418,172 @@ function wireContact(){
 }
 
 /* ============ التوجيه ============ */
+
+/* ============ القنوات: قناة لكل صف بأسلوب تلكرام ============ */
+const TYPE_LABEL = {announcements:'📢 تبليغ', homework:'✏️ واجب', exams:'📝 امتحان', lessons:'🎬 درس', events:'🎉 مناسبة', activities:'🏅 نشاط'};
+const ORD = {'الأول':'١', 'الثاني':'٢', 'الثالث':'٣', 'الرابع':'٤', 'الخامس':'٥', 'السادس':'٦'};
+const isoOf = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+/* وقت النشر: من قاعدة البيانات، وإلا فالتاريخ (ولا يُعدّ موعد مستقبلي وقتَ نشر) */
+const tsOf = it => (it.createdAt && it.createdAt.toMillis ? it.createdAt.toMillis() : 0) || Math.min(Date.parse((it.date || '1970-01-01') + 'T08:00') || 0, Date.now());
+const allPosts = () => Object.keys(SECTIONS).filter(k => Array.isArray(D[k])).flatMap(k => D[k].map(it => ({...it, _k: k})));
+const chGrade = key => key === 'all' ? '' : allGrades(D)[+key];
+const chKeyOf = g => String(allGrades(D).indexOf(g));
+function chItems(key){
+  const g = chGrade(key);
+  return allPosts().filter(it => key === 'all' ? !it.grade : matches(D, it.grade, {stage: stageOf(D, g), grade: g})).sort((a, b) => tsOf(a) - tsOf(b));
+}
+/* المقروء وغير المقروء يُحفظ على جهاز الزائر فقط */
+if(!store.get('wx-first')) store.set('wx-first', Date.now());
+const unreadOf = (key, its) => { const from = Math.max((store.get('wx-seen') || {})[key] || 0, (store.get('wx-first') || Date.now()) - 7 * 864e5); return its.filter(it => tsOf(it) > from).length; };
+const markSeen = (key, t) => { const s = store.get('wx-seen') || {}; s[key] = Math.max(s[key] || 0, t); store.set('wx-seen', s); };
+const follows = () => store.get('wx-follow') || [];
+function chAvatar(key){
+  if(key === 'all') return `<div class="chav" style="--a:#7A1212">🏫</div>`;
+  const g = chGrade(key), [w, ...rest] = g.split(' '), st = stageOf(D, g);
+  return `<div class="chav" style="--a:${st === (D.stages[0] || {}).name ? '#1F3B2D' : '#1E2F4A'}"><b>${ORD[w] || esc(w.slice(0, 2))}</b><small>${esc(rest.join(' ').replace(/^ال/, '').slice(0, 8))}</small></div>`;
+}
+const chName = key => key === 'all' ? 'قناة المدرسة العامة' : 'قناة الصف ' + chGrade(key);
+const preview = it => esc(((it._k !== 'channels' ? (TYPE_LABEL[it._k] || '') + ': ' : '') + (it.title || it.body || '')).replace(/\s+/g, ' ').slice(0, 70));
+function whenShort(it){
+  const t = tsOf(it), d = new Date(t), today = new Date();
+  if(d.toDateString() === today.toDateString() && it.createdAt) return d.toLocaleTimeString('ar-IQ', {hour:'numeric', minute:'2-digit'});
+  return d.toLocaleDateString('ar-IQ', {day:'numeric', month:'short'});
+}
+function chRow(key){
+  const its = chItems(key), last = its[its.length - 1], un = unreadOf(key, its);
+  return `
+    <a class="card chrow${un ? ' unread' : ''}" href="#ch-${key}" style="--g:${G('channels')}">
+      ${chAvatar(key)}
+      <div class="cbody">
+        <div class="r1"><b>${esc(chName(key))}</b><span class="muted">${last ? whenShort(last) : ''}</span></div>
+        <div class="r2"><span class="muted prev">${last ? preview(last) : 'لا توجد منشورات بعد'}</span>${un ? `<span class="badge">${toAr(un)}</span>` : ''}</div>
+      </div>
+    </a>`;
+}
+function channelsView(){
+  theme('channels');
+  const fol = follows().filter(k => k === 'all' || chGrade(k));
+  const stages = D.stages.filter(s => !sel.stage || s.name === sel.stage);
+  return `
+    ${head('channels', 'القنوات')}
+    <p class="muted" style="margin-top:-6px">لكل صف قناة تجمع كل ما يُنشر له بالترتيب، مثل قنوات تلكرام. تابع قناة صف ابنك لتظهر في أعلى القائمة.</p>
+    ${fol.length ? `<h3 style="margin-top:18px">⭐ قنواتي</h3><div class="list">${fol.map(chRow).join('')}</div>` : ''}
+    <h3 style="margin-top:18px">🏫 المدرسة</h3><div class="list">${chRow('all')}</div>
+    ${stages.map(s => `<h3 style="margin-top:18px">المرحلة ${esc(s.name)}</h3><div class="list">${s.grades.map(g => chRow(chKeyOf(g))).join('')}</div>`).join('')}`;
+}
+function msgHTML(it, key){
+  const k = it._k, d = dayDiff(it.date);
+  let meta = '';
+  if(k === 'homework' && it.due) meta = `<span class="tag ${dayDiff(it.due) < 0 ? 'late' : 'ok'}">${dayDiff(it.due) < 0 ? 'انتهى موعد التسليم' : 'التسليم ' + relDay(dayDiff(it.due))}</span>`;
+  if(k === 'exams' || k === 'events') meta = `<span class="tag ${d === 0 ? 'hot' : d > 0 ? 'ok' : ''}">${fmtDate(it.date, {weekday:'long', day:'numeric', month:'long'})}، ${relDay(d)}</span>${it.place ? `<span class="tag">📍 ${esc(it.place)}</span>` : ''}`;
+  if(it.subject) meta = `<span class="tag">${esc(it.subject)}</span>` + meta;
+  if(key === 'all' || (it.grade && it.grade !== chGrade(key))) meta += it.grade ? `<span class="tag">${esc(audienceLabel(it.grade))}</span>` : '';
+  let act = '';
+  if(k === 'lessons') act = ytId(it.link) ? `<a class="btn pri sm" href="#lesson-${esc(it.id)}">▶ شاهد الدرس</a>` : linkBtn(it.link, 'افتح الدرس', 'pri sm');
+  else if(k === 'exams') act = it.link ? (d <= 0 ? linkBtn(it.link, '📝 ادخل الامتحان', 'pri sm') : `<span class="btn sm off">يُفتح ${relDay(d)}</span>`) : '';
+  else if(k === 'homework') act = linkBtn(it.link, it.examId ? '✏️ حلّ الواجب الآن' : 'فتح الرابط', 'pri sm');
+  else act = linkBtn(it.link, 'فتح الرابط', 'sm');
+  const t = tsOf(it), time = it.createdAt ? new Date(t).toLocaleTimeString('ar-IQ', {hour:'numeric', minute:'2-digit'}) : '';
+  const mine = window.P && it._k === 'channels' && (P.role === 'owner' || it.authorUid === P.uid);
+  return `
+    <div class="msg${it.pinned ? ' pinned' : ''}" id="m-${esc(it.id)}">
+      ${TYPE_LABEL[k] ? `<div class="mt" style="--g:${G(k)}">${TYPE_LABEL[k]}</div>` : ''}
+      ${it.image ? `<img class="thumb" src="${esc(it.image)}" alt="" loading="lazy">` : ''}
+      ${it.title ? `<b class="mtitle">${esc(it.title)}</b>` : ''}
+      ${it.body ? `<div class="body">${rich(it.body)}</div>` : ''}
+      ${meta ? `<div class="meta">${meta}</div>` : ''}
+      ${act ? `<div class="acts">${act}</div>` : ''}
+      <div class="foot">${it.pinned ? '📌 ' : ''}${esc(it.authorName || '')}${it.authorName && time ? '، ' : ''}${time}${mine ? ` <button class="sm warn" data-delmsg="${esc(it.id)}">حذف</button>` : ''}</div>
+    </div>`;
+}
+function feedHTML(key){
+  const its = chItems(key);
+  if(!its.length) return emptyBox('لا توجد منشورات في هذه القناة بعد.');
+  let last = '';
+  return its.map(it => {
+    const day = isoOf(tsOf(it)), n = dayDiff(day), sep = day !== last ? `<div class="daysep"><span>${n === 0 ? 'اليوم' : n === -1 ? 'أمس' : fmtDate(day, {weekday:'long', day:'numeric', month:'long'})}</span></div>` : '';
+    last = day; return sep + msgHTML(it, key);
+  }).join('');
+}
+function pinHTML(key){
+  const p = chItems(key).filter(it => it.pinned).pop();
+  return p ? `<a class="pinbar" href="#ch-${key}" data-pin="${esc(p.id)}"><b>📌 مثبّت</b><span>${preview(p)}</span></a>` : '';
+}
+function channelView(key){
+  theme('channels');
+  if(key !== 'all' && !chGrade(key)) return emptyBox('القناة غير موجودة.');
+  const fol = follows().includes(key), n = chItems(key).length;
+  const staff = window.P;
+  return `
+    <div class="chhead">
+      <a class="btn sm" href="#channels" aria-label="كل القنوات">→</a>
+      ${chAvatar(key)}
+      <div style="flex:1;min-width:0"><b style="color:#fff;font-size:18px">${esc(chName(key))}</b><div class="muted">${toAr(n)} منشوراً</div></div>
+      <button class="sm ${fol ? '' : 'pri'}" id="fol">${fol ? '✔ متابَعة' : '+ متابعة'}</button>
+    </div>
+    <div id="pin">${pinHTML(key)}</div>
+    <div class="feed" id="feed">${feedHTML(key)}</div>
+    ${staff ? `
+    <form class="composer" id="cmp">
+      <textarea id="cbody" maxlength="6000" placeholder="اكتب منشوراً في ${esc(chName(key))}…" aria-label="نص المنشور"></textarea>
+      <div class="row">
+        <input id="clink" dir="ltr" placeholder="رابط (اختياري)" aria-label="رابط" style="flex:1;min-width:140px">
+        <input id="cimg" dir="ltr" placeholder="رابط صورة (اختياري)" aria-label="رابط صورة" style="flex:1;min-width:140px">
+        <label class="check" style="display:flex;gap:6px;align-items:center;color:var(--tx)"><input type="checkbox" id="cpin"> تثبيت</label>
+        <button class="pri" id="csend">نشر</button>
+      </div>
+      <div id="cerr"></div>
+    </form>` : ''}`;
+}
+function wireChannel(key){
+  const feed = $('#feed'); if(!feed) return;
+  feed.scrollTop = feed.scrollHeight;
+  const its = chItems(key); if(its.length) markSeen(key, tsOf(its[its.length - 1]));
+  $('#fol').onclick = () => { const f = follows(); store.set('wx-follow', f.includes(key) ? f.filter(x => x !== key) : [key, ...f]); route(); };
+  $('#pin').onclick = e => { const a = e.target.closest('[data-pin]'); if(!a) return; e.preventDefault(); const m = $('#m-' + a.dataset.pin); if(m){ m.scrollIntoView({block:'center'}); m.classList.add('flash'); setTimeout(() => m.classList.remove('flash'), 1500); } };
+  feed.onclick = async e => {
+    const b = e.target.closest('[data-delmsg]'); if(!b) return;
+    if(!await ask('حذف هذا المنشور من القناة؟', 'حذف')) return;
+    try{ await F.deleteDoc(F.doc(db, 'posts', b.dataset.delmsg)); toast('حُذف'); }catch(x){ toast(errText(x)); }
+  };
+  if($('#cmp')) $('#cmp').onsubmit = async e => {
+    e.preventDefault();
+    const body = $('#cbody').value.trim(), link = $('#clink').value.trim(), image = $('#cimg').value.trim();
+    if(!body) return;
+    if(/\s/.test(link + image)) return $('#cerr').innerHTML = '<div class="alert">الرابط يحتوي على مسافات.</div>';
+    const b = $('#csend'); b.disabled = true;
+    try{
+      await F.setDoc(F.doc(F.collection(db, 'posts')), {type: 'channels', title: '', body, link, image, pinned: $('#cpin').checked,
+        grade: chGrade(key), date: todayISO(), authorUid: P.uid, authorName: P.name, createdAt: now(), updatedAt: now()});
+      $('#cbody').value = ''; $('#clink').value = ''; $('#cimg').value = ''; $('#cpin').checked = false; $('#cerr').innerHTML = '';
+    }catch(x){ $('#cerr').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+    b.disabled = false;
+  };
+}
+/* تحديث القنوات مباشرة عند نشر جديد (مع قاعدة البيانات) */
+function refreshLive(){
+  const h = location.hash.replace(/^#\/?/, '');
+  if(h.startsWith('ch-')){
+    const key = h.slice(3), feed = $('#feed'); if(!feed) return;
+    const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
+    feed.innerHTML = feedHTML(key); $('#pin').innerHTML = pinHTML(key);
+    if(atBottom) feed.scrollTop = feed.scrollHeight;
+    const its = chItems(key); if(its.length) markSeen(key, tsOf(its[its.length - 1]));
+  } else if(h === 'channels' || h === '' || h === 'home') route();
+}
+
 function route(){
   /* روابط بسيطة مثل #homework و #lesson-l1 (والصيغة القديمة #/homework ما زالت تعمل) */
   const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   const [k, id] = h.startsWith('lesson') ? ['lesson', h.replace(/^lesson[-/]/, '')] : [h.split('/')[0], ''];
-  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons') || (k.startsWith('chat-') && a.dataset.k === 'contact')));
+  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons') || (k.startsWith('chat-') && a.dataset.k === 'contact') || (k.startsWith('ch-') && a.dataset.k === 'channels')));
   const v = $('#view');
   if(chatUnsub){ chatUnsub(); chatUnsub = null; }
   if(k === 'contact'){ if(LIVE && !D.loadError){ v.innerHTML = contactLive(); wireContactLive(); } else { v.innerHTML = contact(); wireContact(); } }
   else if(LIVE && k.startsWith('chat-')){ v.innerHTML = chatView(k.slice(5)); wireChat(k.slice(5)); }
   else if(k === 'lesson') v.innerHTML = lesson(id);
+  else if(k === 'channels') v.innerHTML = channelsView();
+  else if(k.startsWith('ch-')){ v.innerHTML = channelView(k.slice(3)); wireChannel(k.slice(3)); }
   else if(CARD[k]){ v.innerHTML = section(k); fillSection(k); }
   else v.innerHTML = home();
   v.classList.remove('fade'); void v.offsetWidth; v.classList.add('fade');

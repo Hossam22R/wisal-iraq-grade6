@@ -166,3 +166,33 @@ footer{border-top:1px solid var(--bd);background:rgba(0,0,0,.3);color:var(--mu);
 .thread.unread{border-color:color-mix(in srgb,var(--hot) 60%,transparent)}
 .code{direction:ltr;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.5px;background:rgba(0,0,0,.35);border:1px dashed var(--glow);border-radius:10px;padding:6px 12px;display:inline-block;user-select:all}
 .login{max-width:440px;margin:30px auto}
+
+/* ===== القنوات (بأسلوب تلكرام) ===== */
+.chrow{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;padding:12px 18px 12px 14px}
+.chrow.unread{border-color:color-mix(in srgb,var(--glow) 55%,transparent)}
+.chrow .cbody{flex:1;min-width:0}
+.chrow .r1,.chrow .r2{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chrow .r1 b{color:#fff;font-size:16.5px}
+.chrow .prev{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.chav{flex:none;width:50px;height:50px;border-radius:50%;display:grid;place-items:center;align-content:center;line-height:1.05;background:var(--a,#1E2F4A);border:1px solid color-mix(in srgb,var(--glow) 50%,transparent);box-shadow:0 0 16px -6px var(--glow);color:#fff}
+.chav b{font-size:20px;font-weight:900}
+.chav small{font-size:10px;color:var(--cream);opacity:.85}
+.chhead{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r) var(--r) 0 0;background:rgba(11,18,32,.85);position:sticky;top:56px;z-index:3;backdrop-filter:blur(10px)}
+.pinbar{display:flex;gap:10px;align-items:center;padding:8px 14px;border:1px solid var(--bd);border-top:0;background:color-mix(in srgb,var(--glow) 8%,var(--bg2));color:var(--tx);text-decoration:none;font-size:14px}
+.pinbar b{color:var(--glow);flex:none}
+.pinbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.feed{display:flex;flex-direction:column;gap:10px;max-height:68vh;overflow-y:auto;padding:16px 12px;border:1px solid var(--bd);border-top:0;background:
+  radial-gradient(600px 300px at 80% 0%,color-mix(in srgb,var(--glow) 7%,transparent),transparent 70%),rgba(0,0,0,.22)}
+.msg{align-self:flex-start;max-width:min(560px,92%);background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.035));border:1px solid var(--bd);border-radius:16px 16px 16px 4px;padding:10px 14px;transition:box-shadow .3s}
+.msg.pinned{border-color:color-mix(in srgb,var(--glow) 45%,transparent)}
+.msg.flash{box-shadow:0 0 0 2px var(--glow),0 0 24px -4px var(--glow)}
+.msg .mt{display:inline-block;font-size:12.5px;font-weight:900;color:var(--g);margin-bottom:4px}
+.msg .mtitle{display:block;color:#fff;font-size:16.5px;margin-bottom:2px}
+.msg .body{line-height:1.85;font-size:15.5px;color:#D6E1F2}
+.msg .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.msg .acts{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.msg .foot{margin-top:6px;font-size:12px;color:var(--mu);text-align:left;display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.daysep{align-self:center;font-size:12.5px;color:var(--mu)}
+.daysep span{display:inline-block;padding:2px 12px;border-radius:20px;background:rgba(0,0,0,.4);border:1px solid var(--bd)}
+.composer{border:1px solid var(--bd);border-top:0;border-radius:0 0 var(--r) var(--r);padding:12px;background:rgba(11,18,32,.85);display:grid;gap:8px}
+.composer textarea{min-height:70px}

@@ -158,6 +158,7 @@ const canEdit = it => ME.role === 'owner' || it.authorUid === ME.uid;
 
 /* ============ المنشورات ============ */
 const SCHEMA = {
+  channels:[['grade','القناة (جميع المراحل = قناة المدرسة العامة)','aud'],['body','نص المنشور','textarea',1],['date','التاريخ','date',1],['pinned','تثبيت في أعلى القناة','check'],['image','رابط صورة (اختياري) — لا تنشر صور التلاميذ إلا بموافقة أوليائهم','url'],['link','رابط (اختياري)','url']],
   announcements:[['title','عنوان التبليغ','text',1],['date','التاريخ','date',1],['grade','موجّه إلى','aud'],['urgent','تبليغ عاجل (يظهر أعلى الرئيسية)','check'],['body','نص التبليغ','textarea',1]],
   homework:[['title','عنوان الواجب','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['date','تاريخ الإعطاء','date',1],['due','آخر موعد للتسليم','date'],['body','تفاصيل الواجب','textarea',1],['link','رابط إضافي (اختياري)','url']],
   exams:[['title','عنوان الامتحان','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['date','تاريخ الامتحان','date',1],['body','ملاحظات ومفردات الامتحان','textarea'],['link','رابط إضافي (اختياري)','url']],
@@ -202,8 +203,8 @@ function drawPosts(){
     </div>` : ''}
     <div class="list">${list.map(it => `
       <div class="card item" style="--g:${SECTIONS[ptype].glow}">
-        <div><span class="t">${esc(it.title)}</span>
-          <div class="muted">${esc([audienceLabel(it.grade || ''), it.subject, it.date && fmtDate(it.date, {day:'numeric', month:'long', year:'numeric'}), it.urgent && 'عاجل', it.examId && 'اختبار إلكتروني'].filter(Boolean).join('، '))}</div>
+        <div><span class="t">${esc(it.title || (it.body || '').slice(0, 70))}</span>
+          <div class="muted">${esc([ptype === 'channels' ? (it.grade ? 'قناة ' + it.grade : 'قناة المدرسة العامة') : audienceLabel(it.grade || ''), it.subject, it.date && fmtDate(it.date, {day:'numeric', month:'long', year:'numeric'}), it.urgent && 'عاجل', it.examId && 'اختبار إلكتروني'].filter(Boolean).join('، '))}</div>
           <div class="muted">نشره: ${esc(it.authorName || '—')}</div></div>
         <div class="row">${canEdit(it) ? `<button class="sm" data-ed="${esc(it.id)}">تعديل</button><button class="sm warn" data-rm="${esc(it.id)}">حذف</button>` : '<span class="muted">للعرض فقط</span>'}</div>
       </div>`).join('') || '<div class="empty">لا يوجد شيء بعد. اضغط «إضافة».</div>'}</div>`;
@@ -212,7 +213,7 @@ function drawPosts(){
   $$('[data-ed]').forEach(b => b.onclick = () => { editing = {id: b.dataset.ed}; drawPosts(); $('#form').scrollIntoView({block:'start'}); });
   $$('[data-rm]').forEach(b => b.onclick = async () => {
     const it = POSTS.find(x => x.id === b.dataset.rm);
-    if(!await ask(`حذف «${it.title}»؟${it.examId ? ' سيُحذف المنشور فقط ويبقى الاختبار في قسم الاختبارات.' : ''}`, 'حذف')) return;
+    if(!await ask(`حذف «${it.title || (it.body || '').slice(0, 40)}»؟${it.examId ? ' سيُحذف المنشور فقط ويبقى الاختبار في قسم الاختبارات.' : ''}`, 'حذف')) return;
     try{ await F.deleteDoc(F.doc(db, 'posts', it.id)); toast('حُذف'); postsTab(); }catch(x){ toast(errText(x)); }
   });
   if(!$('#form')) return;
@@ -229,7 +230,7 @@ function drawPosts(){
     const b = $('#ok'); busy(b, true);
     try{
       if(editing.id) await F.updateDoc(F.doc(db, 'posts', editing.id), {...o, updatedAt: now()});
-      else await F.setDoc(F.doc(F.collection(db, 'posts')), {...o, type: ptype, authorUid: ME.uid, authorName: ME.name, createdAt: now(), updatedAt: now()});
+      else await F.setDoc(F.doc(F.collection(db, 'posts')), {title: '', ...o, type: ptype, authorUid: ME.uid, authorName: ME.name, createdAt: now(), updatedAt: now()});
       editing = null; toast('تم النشر'); postsTab();
     }catch(x){ busy(b, false); err(errText(x)); }
   };

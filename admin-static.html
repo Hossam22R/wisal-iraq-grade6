@@ -61,6 +61,7 @@ let editing = null;
 /* الحقول: [المفتاح، التسمية، النوع، مطلوب]
    aud = الجمهور (كل المراحل أو مرحلة أو صف)، grade = صف محدد، subject = مادة حسب مرحلة الصف */
 const SCHEMA = {
+  channels:[['grade','القناة (جميع المراحل = قناة المدرسة العامة)','aud'],['body','نص المنشور','textarea',1],['date','التاريخ','date',1],['pinned','تثبيت في أعلى القناة','check'],['image','رابط صورة (اختياري) — لا تنشر صور التلاميذ إلا بموافقة أوليائهم','url'],['link','رابط (اختياري)','url']],
   announcements:[['title','عنوان التبليغ','text',1],['date','التاريخ','date',1],['grade','موجّه إلى','aud'],['urgent','تبليغ عاجل (يظهر أعلى الرئيسية)','check'],['body','نص التبليغ','textarea',1]],
   homework:[['title','عنوان الواجب','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['date','تاريخ الإعطاء','date',1],['due','آخر موعد للتسليم','date'],['body','تفاصيل الواجب','textarea',1],['link','رابط واجب تفاعلي (اختياري) — أنشئه من «منشئ الامتحانات» والصقه هنا','url']],
   exams:[['title','عنوان الامتحان','text',1],['grade','الصف','grade',1],['subject','المادة','subject',1],['date','تاريخ الامتحان (يُفتح الرابط في هذا اليوم)','date',1],['body','ملاحظات ومفردات الامتحان','textarea'],['link','رابط الامتحان الإلكتروني (اختياري)','url']],
@@ -103,7 +104,7 @@ function field([k, l, type, req], v, it){
 const subjectOpts = (g, v) => subjectsFor(D, g).map(s => `<option${s === v ? ' selected' : ''}>${esc(s)}</option>`).join('');
 function summary(it){
   const bits = [it.grade !== undefined && audienceLabel(it.grade), it.subject, it.date && fmtDate(it.date, {day:'numeric', month:'long', year:'numeric'}), it.role, it.stage && 'المرحلة ' + it.stage, it.urgent && 'عاجل'].filter(Boolean);
-  return `<span class="t">${esc(it.title || it.name)}</span><div class="muted">${esc(bits.join('، '))}</div>`;
+  return `<span class="t">${esc(it.title || it.name || (it.body || '').slice(0, 70))}</span><div class="muted">${esc(bits.join('، '))}</div>`;
 }
 function listTab(k){
   const arr = D[k] || (D[k] = []);
@@ -127,7 +128,7 @@ function wireList(k){
   $('#add') && ($('#add').onclick = () => { editing = {k, id:null}; draw(); $('#form [data-f]')?.focus(); });
   $$('[data-ed]').forEach(b => b.onclick = () => { editing = {k, id:b.dataset.ed}; draw(); $('#form').scrollIntoView({block:'start'}); });
   $$('[data-cp]').forEach(b => b.onclick = () => { const c = {...arr.find(x => x.id === b.dataset.cp), id:uid()}; if(c.title) c.title += ' (نسخة)'; arr.push(c); save(); editing = {k, id:c.id}; draw(); });
-  $$('[data-rm]').forEach(b => b.onclick = () => { const it = arr.find(x => x.id === b.dataset.rm); ask(`حذف «${it.title || it.name}»؟`, 'حذف').then(ok => { if(ok){ arr.splice(arr.indexOf(it), 1); save(); draw(); } }); });
+  $$('[data-rm]').forEach(b => b.onclick = () => { const it = arr.find(x => x.id === b.dataset.rm); ask(`حذف «${it.title || it.name || (it.body || "").slice(0, 40)}»؟`, 'حذف').then(ok => { if(ok){ arr.splice(arr.indexOf(it), 1); save(); draw(); } }); });
   if(!$('#form')) return;
   /* تتغير قائمة المواد حسب مرحلة الصف المختار */
   const g = $('#form [data-f=grade]'), sub = $('#form [data-f=subject]');

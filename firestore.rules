@@ -49,7 +49,7 @@ service cloud.firestore {
 
     // المنشورات: التبليغات والواجبات والامتحانات والدروس والمناسبات والنشاطات
     function validPost() {
-      return request.resource.data.type in ['announcements', 'homework', 'exams', 'lessons', 'events', 'activities']
+      return request.resource.data.type in ['channels', 'announcements', 'homework', 'exams', 'lessons', 'events', 'activities']
         && str(request.resource.data.title, 200)
         && (!('body' in request.resource.data) || str(request.resource.data.body, 6000));
     }

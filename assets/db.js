@@ -44,7 +44,7 @@ export async function loadSite(){
     F.getDocs(F.collection(db, 'directory'))
   ]);
   const base = st.exists() ? st.data() : {school: window.SCHOOL.school, stages: window.SCHOOL.stages};
-  const D = {school: base.school, stages: base.stages, announcements: [], homework: [], exams: [], lessons: [], events: [], activities: []};
+  const D = {school: base.school, stages: base.stages, channels: [], announcements: [], homework: [], exams: [], lessons: [], events: [], activities: []};
   docs(posts).forEach(p => { if(D[p.type]) D[p.type].push(p); });
   D.staff = docs(dir).filter(d => d.inbox !== false).map(d => ({id: d.id, name: d.name, role: d.title || '', stage: d.stage || '', subjects: d.subjects || '', grades: d.grades || '', inbox: true}));
   D.configured = st.exists();
