@@ -1,18 +1,27 @@
 rules_version = '2';
 // قواعد حماية بوابة مدارس براعم كربلاء الأهلية
-// المالك: كل الصلاحيات. المشرف: ينشر ويعدّل ويحذف منشوراته واختباراته فقط، ويقرأ الرسائل الموجهة إليه.
-// التلاميذ وأولياء الأمور: دخول مجهول تلقائي، يرسلون المحاولات والرسائل فقط.
+// المالك: مشرف القنوات وكل الصلاحيات.
+// مشرف الواجبات: ينشر الواجبات فقط (العادية والإلكترونية)، ولصفوفه المحددة إن حُددت، ويعدّل ويحذف ما نشره هو.
+// ولي الأمر والتلميذ: دخول مجهول تلقائي، ويدخل صف ابنه برمز الصف، فيرى محتوى ذلك الصف فقط.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
     function isAnon() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
     function userDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
-    function isStaff() { return signedIn() && !isAnon() && exists(userDoc()) && get(userDoc()).data.active == true; }
-    function isOwner() { return isStaff() && get(userDoc()).data.role == 'owner'; }
+    function me() { return get(userDoc()).data; }
+    function isStaff() { return signedIn() && !isAnon() && exists(userDoc()) && me().active == true; }
+    function isOwner() { return isStaff() && me().role == 'owner'; }
     function str(v, n) { return v is string && v.size() <= n; }
     function onlyKeys(keys) { return request.resource.data.keys().hasOnly(keys); }
     function changed(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    // المحتوى العام: الموجّه للمدرسة كلها أو لمرحلة كاملة
+    function isPublicGrade(g) { return g == '' || g.matches('مرحلة:.*'); }
+    // عضو في صف: دخل برمز الصف
+    function member(g) { return signedIn() && exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '__' + g)); }
+    // صفوف مشرف الواجبات (فارغة = كل الصفوف)
+    function gradeAllowed(g) { return !('gradesList' in me()) || me().gradesList.size() == 0 || g in me().gradesList; }
+    function canPost(t, g) { return isOwner() || (isStaff() && t == 'homework' && gradeAllowed(g)); }
 
     // تسجيل المالك الأول مرة واحدة فقط
     match /meta/owner {
@@ -21,7 +30,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // حسابات الإدارة والمشرفين
+    // حسابات المالك ومشرفي الواجبات
     match /users/{uid} {
       allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
       allow create: if
@@ -30,12 +39,11 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/meta/owner).data.uid == request.auth.uid
           && request.resource.data.role == 'owner' && request.resource.data.active == true)
         || (isOwner() && request.resource.data.role == 'supervisor');
-      // المالك لا يستطيع إلغاء صلاحيته بنفسه
       allow update: if isOwner() && (uid != request.auth.uid || (request.resource.data.role == 'owner' && request.resource.data.active == true));
       allow delete: if false;
     }
 
-    // دليل التواصل العام (من يستقبل الرسائل)
+    // دليل التواصل العام
     match /directory/{uid} {
       allow read: if true;
       allow write: if isOwner();
@@ -47,29 +55,51 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // المنشورات: التبليغات والواجبات والامتحانات والدروس والمناسبات والنشاطات
+    // رموز الصفوف: يعرف الرمز من يملكه فقط، ولا يمكن سرد الرموز إلا للمالك
+    match /joinCodes/{code} {
+      allow get: if signedIn();
+      allow list: if isOwner();
+      allow write: if isOwner();
+    }
+
+    // عضوية أولياء الأمور في الصفوف
+    match /memberships/{id} {
+      allow get, list: if isOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '__' + request.resource.data.grade
+        && onlyKeys(['uid', 'grade', 'code', 'parentName', 'studentName', 'at'])
+        && str(request.resource.data.parentName, 80) && str(request.resource.data.studentName, 80)
+        && get(/databases/$(database)/documents/joinCodes/$(request.resource.data.code)).data.grade == request.resource.data.grade;
+      allow update: if false;
+      allow delete: if isOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // المنشورات
     function validPost() {
       return request.resource.data.type in ['channels', 'announcements', 'homework', 'exams', 'lessons', 'events', 'activities']
+        && request.resource.data.grade is string
+        && request.resource.data.public == isPublicGrade(request.resource.data.grade)
         && str(request.resource.data.title, 200)
         && (!('body' in request.resource.data) || str(request.resource.data.body, 6000));
     }
     match /posts/{id} {
-      allow read: if true;
-      allow create: if isStaff() && request.resource.data.authorUid == request.auth.uid && validPost();
-      allow update: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid)
-        && request.resource.data.authorUid == resource.data.authorUid && validPost();
+      allow read: if resource.data.public == true || isStaff() || member(resource.data.grade);
+      allow create: if isStaff() && request.resource.data.authorUid == request.auth.uid && validPost()
+        && canPost(request.resource.data.type, request.resource.data.grade);
+      allow update: if isStaff() && validPost() && request.resource.data.authorUid == resource.data.authorUid
+        && (isOwner() || (resource.data.authorUid == request.auth.uid && canPost(request.resource.data.type, request.resource.data.grade)));
       allow delete: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid);
     }
 
-    // الاختبارات والواجبات الإلكترونية (الأسئلة بلا إجابات في الوضع المحمي)
+    // الاختبارات والواجبات الإلكترونية: لأعضاء الصف والكادر فقط
+    function canExam(d) { return isOwner() || (isStaff() && d.type == 'homework' && gradeAllowed(d.grade)); }
     match /exams/{id} {
-      allow read: if true;
-      allow create: if isStaff() && request.resource.data.authorUid == request.auth.uid && str(request.resource.data.title, 200);
-      allow update: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid)
-        && request.resource.data.authorUid == resource.data.authorUid;
+      allow read: if isStaff() || member(resource.data.grade);
+      allow create: if isStaff() && request.resource.data.authorUid == request.auth.uid && str(request.resource.data.title, 200) && canExam(request.resource.data);
+      allow update: if isStaff() && request.resource.data.authorUid == resource.data.authorUid
+        && (isOwner() || (resource.data.authorUid == request.auth.uid && canExam(request.resource.data)));
       allow delete: if isStaff() && (isOwner() || resource.data.authorUid == request.auth.uid);
     }
-    // مفاتيح الإجابات للاختبارات المحمية: يقرؤها الكادر فقط
     match /examKeys/{id} {
       allow read: if isStaff();
       allow create, update: if isStaff() && (isOwner() || getAfter(/databases/$(database)/documents/exams/$(id)).data.authorUid == request.auth.uid);
@@ -89,7 +119,7 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
-    // الرسائل الخاصة: محادثة لكل ولي أمر برمز سري
+    // الدردشة الخاصة: محادثة لكل ولي أمر برمز سري
     match /threads/{tid} {
       allow get: if signedIn();
       allow list: if isOwner() || (isStaff() && resource.data.to == request.auth.uid);

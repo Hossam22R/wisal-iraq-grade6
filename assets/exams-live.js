@@ -1,6 +1,6 @@
 /* ربط صفحة الامتحانات بقاعدة البيانات: النشر على المنصة، وأداء التلاميذ، وحفظ المحاولات.
    تعتمد على المتغيرات العامة في exams.html (exam, S, SCH, editor, startStudent, result, ...) */
-import {init, F, db, auth, ensureAnon, profile, now, errText} from './db.js';
+import {init, F, db, auth, ensureAnon, profile, now, errText, joinClass} from './db.js';
 
 await init();
 const P = await profile().catch(() => null);
@@ -8,7 +8,11 @@ try{
   const st = await F.getDoc(F.doc(db, 'settings', 'school'));
   if(st.exists()){ SCH = st.data(); SCHOOL_NAME = SCH.school.name; }
 }catch(e){}
-const grades = () => SCH ? SCH.stages.flatMap(s => s.grades) : [];
+const allG = () => SCH ? SCH.stages.flatMap(s => s.grades) : [];
+const isOwnerP = () => P && P.role === 'owner';
+/* مشرف الواجبات: يرسل لصفوفه المحددة فقط، أو لكل الصفوف إن لم تُحدد */
+const grades = () => isOwnerP() || !P || !(P.gradesList || []).length ? allG() : allG().filter(g => P.gradesList.includes(g));
+if(P && !isOwnerP()) exam.type = 'homework';
 const today = () => new Date().toISOString().slice(0, 10);
 const out = (html, el = '#liveout') => { const b = document.querySelector(el); if(b) b.innerHTML = html; };
 const studentURL = id => location.href.split(/[?#]/)[0] + '?id=' + id;
@@ -22,7 +26,7 @@ window.LX = {
       ${P ? `<p class="muted">تنشر باسم: <b>${esc(P.name)}</b>. تُحفظ إجابات التلاميذ وتظهر لك في «لوحة الإدارة ← الاختبارات والنتائج».</p>`
           : '<div class="alert">للنشر على المنصة سجّل الدخول أولاً من <a href="admin.html" style="color:inherit">لوحة الإدارة</a> ثم ارجع إلى هذه الصفحة.</div>'}
       <div class="grid">
-        <div><label>النوع</label><select data-k="type"><option value="exam">امتحان</option><option value="homework">واجب إلكتروني</option></select></div>
+        <div><label>النوع</label><select data-k="type">${isOwnerP() || !P ? '<option value="exam">امتحان</option>' : ''}<option value="homework">واجب إلكتروني</option></select></div>
         <div class="wide"><label>طريقة التصحيح</label><select data-k="mode">
           <option value="instant">فورية: يرى التلميذ درجته والتصحيح مباشرة</option>
           <option value="protected">محمية: الإجابات لا تصل لجهاز التلميذ، وتظهر الدرجة بعد اعتمادك</option></select></div>
@@ -48,7 +52,8 @@ async function publishLive(){
   const e = validate();
   if(e) return out(`<div class="alert">${esc(e)}</div>`);
   if(!exam.title.trim()) return out('<div class="alert">اكتب عنوان الامتحان.</div>');
-  if(!grades().includes(exam.grade)) return out('<div class="alert">اختر الصف من القائمة المقترحة كما هو مكتوب، حتى يظهر الاختبار لتلاميذ هذا الصف.</div>');
+  if(!isOwnerP()) exam.type = 'homework';
+  if(!grades().includes(exam.grade)) return out(`<div class="alert">اختر الصف من القائمة المقترحة كما هو مكتوب${grades().length < allG().length ? '، ومن صفوفك فقط: ' + esc(grades().join('، ')) : ''}.</div>`);
   if(!exam.subject.trim()) return out('<div class="alert">اكتب المادة.</div>');
   if(!exam.date) return out('<div class="alert">حدد تاريخ الفتح.</div>');
   const btn = document.querySelector('#livepub'); btn.disabled = true;
@@ -72,7 +77,7 @@ async function publishLive(){
     w.set(F.doc(db, 'posts', postId), {
       type: hw ? 'homework' : 'exams', title: data.title, grade: data.grade, subject: data.subject, date: data.date, due: hw ? data.due : '',
       body: `${hw ? 'واجب' : 'اختبار'} إلكتروني من ${toAr(qsPub.length)} ${qsPub.length > 10 ? 'سؤالاً' : 'أسئلة'}${data.minutes ? '، مدته ' + toAr(data.minutes) + ' دقيقة' : ''}. ${data.mode === 'instant' ? 'تظهر الدرجة مباشرة بعد التسليم.' : 'تظهر الدرجة بعد اعتماد المعلم.'}`,
-      link: 'exams.html?id=' + id, examId: id, authorUid, authorName, createdAt: exam._createdAt || now(), updatedAt: now()
+      public: false, link: 'exams.html?id=' + id, examId: id, authorUid, authorName, createdAt: exam._createdAt || now(), updatedAt: now()
     });
     await w.commit();
     const wasNew = !exam._id;
@@ -123,7 +128,9 @@ async function studentLive(id){
   app.innerHTML = '<p>جارٍ تحميل الاختبار…</p>';
   try{
     await ensureAnon();
-    const s = await F.getDoc(F.doc(db, 'exams', id));
+    let s;
+    try{ s = await F.getDoc(F.doc(db, 'exams', id)); }
+    catch(x){ if(/permission/i.test(x.code || '')) return joinPrompt(id); throw x; }
     if(!s.exists()){ app.innerHTML = '<h2>الاختبار غير موجود</h2><p>ربما حذفه المعلم. تأكد من الرابط.</p>'; return; }
     const d = s.data(), saved = store.get('wx-run-L' + id);
     setHeader(d.school || SCHOOL_NAME);
@@ -136,6 +143,25 @@ async function studentLive(id){
     };
     startStudent(ex, false, 'L' + id);
   }catch(x){ app.innerHTML = `<h2>تعذّر تحميل الاختبار</h2><p>${esc(errText(x))}</p><button class="pri" onclick="location.reload()">إعادة المحاولة</button>`; }
+}
+/* الاختبار لأعضاء الصف فقط: يدخل التلميذ برمز الصف أولاً */
+function joinPrompt(id){
+  app.innerHTML = `
+    <h2>🔑 هذا الاختبار لتلاميذ صف معيّن</h2>
+    <p>اكتب رمز الصف الذي أرسلته المدرسة، ثم يُفتح الاختبار. يُحفظ دخولك على هذا الجهاز.</p>
+    <div class="grid" style="margin-top:12px">
+      <div><label>رمز الصف</label><input id="jc" dir="ltr" maxlength="8" autocomplete="off" style="font-size:22px;letter-spacing:.3em;text-align:center;font-weight:700"></div>
+      <div><label>اسم ولي الأمر</label><input id="jp" maxlength="80"></div>
+      <div><label>اسم التلميذ</label><input id="js" maxlength="80"></div>
+    </div>
+    <div id="jerr"></div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="jgo">دخول</button></div>`;
+  const c = document.querySelector('#jc');
+  c.oninput = () => { c.value = c.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  document.querySelector('#jgo').onclick = async () => {
+    try{ await joinClass(c.value, document.querySelector('#jp').value || '—', document.querySelector('#js').value || '—'); studentLive(id); }
+    catch(x){ out(`<div class="alert">${esc(errText(x))}</div>`, '#jerr'); }
+  };
 }
 async function send(){
   app.innerHTML = '<div class="score"><h2>جارٍ إرسال إجاباتك…</h2><p>لا تغلق الصفحة.</p></div>';

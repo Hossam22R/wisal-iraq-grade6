@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0B1220">
 <title>بوابة مدارس براعم كربلاء الأهلية</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/fonts/cairo.css">
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/common.js"></script>
 <script src="data/content.js"></script>
@@ -34,22 +34,36 @@
 <footer>© مؤسسة وصال التعليمية · إعداد: حسام الجنابي</footer>
 
 <script type="module">
-import {LIVE, init, loadSite, profile, F, db, auth, ensureAnon, now, tsText, errText} from './assets/db.js';
+import {LIVE, init, loadSite, profile, subscribePosts, joinClass, myMemberships, isPublicGrade, F, db, auth, ensureAnon, now, tsText, errText} from './assets/db.js';
 /* ============ البيانات والاختيار ============ */
 const PREVIEW = /[?&]preview\b/.test(location.search);
 let D = (PREVIEW && store.get(DRAFT_KEY)) || window.SCHOOL;
-if(LIVE){ try{ await init(); D = await loadSite(); }catch(e){ console.error(e); D.loadError = true; } }
 window.P = null;
-if(LIVE && !D.loadError){
-  const p = await profile().catch(() => null);
-  window.P = p && p.active ? p : null;
-  /* المنشورات الجديدة تظهر فوراً دون تحديث الصفحة */
-  F.onSnapshot(F.collection(db, 'posts'), snap => {
+let MEMS = [], OWNER = null, postsSub = null, booted = false;
+if(LIVE){ try{ await init(); D = await loadSite(); }catch(e){ console.error(e); D.loadError = true; } }
+/* الكادر يرى كل شيء؛ وولي الأمر يرى المحتوى العام ومحتوى الصفوف التي دخلها برمز */
+async function startPosts(){
+  if(postsSub) postsSub.stop();
+  postsSub = subscribePosts({all: !!window.P, grades: MEMS.map(m => m.grade)}, posts => {
     Object.keys(SECTIONS).forEach(k => { if(Array.isArray(D[k])) D[k] = []; });
-    snap.docs.forEach(d => { const x = {id: d.id, ...d.data({serverTimestamps: 'estimate'})}; if(Array.isArray(D[x.type])) D[x.type].push(x); });
-    refreshLive();
-  }, e => console.error(e));
+    posts.forEach(x => { if(Array.isArray(D[x.type])) D[x.type].push(x); });
+    if(booted) refreshLive();
+  });
+  await postsSub.ready;
 }
+if(LIVE && !D.loadError){
+  try{
+    const p = await profile().catch(() => null);
+    window.P = p && p.active ? p : null;
+    if(!window.P){ await ensureAnon(); MEMS = await myMemberships().catch(() => []); }
+    const o = await F.getDoc(F.doc(db, 'meta', 'owner')).catch(() => null);
+    OWNER = o && o.exists() ? o.data().uid : null;
+    await startPosts();
+  }catch(e){ console.error(e); }
+}
+const liveVisitor = () => LIVE && !D.loadError && !window.P;
+/* هل يرى الزائر محتوى صف معيّن؟ بلا قاعدة بيانات: نعم دائماً */
+const canSee = g => !liveVisitor() || !g || isPublicGrade(g) || MEMS.some(m => m.grade === g);
 let sel = store.get('wx2-sel') || {stage:'', grade:''};
 if(sel.grade && !allGrades(D).includes(sel.grade)) sel = {stage:'', grade:''};
 if(sel.stage && !D.stages.some(s => s.name === sel.stage)) sel = {stage:'', grade:''};
@@ -192,7 +206,7 @@ function home(){
   return `
     ${PREVIEW ? '<div class="notice">أنت تشاهد معاينة المسودة المحفوظة في لوحة الإدارة على هذا الجهاز. لن يراها الآخرون قبل رفع ملف المحتوى.</div>' : ''}
     ${urgent.map(a => `<div class="urgent fade"><span class="node"></span><div><b>${esc(a.title)}</b> <span class="tag" style="color:#fff">${esc(audienceLabel(a.grade))}</span><div>${rich(a.body)}</div></div></div>`).join('')}
-    ${sel.grade ? `<div class="list" style="margin-bottom:12px">${chRow(chKeyOf(sel.grade))}</div>` : ''}
+    ${homeClasses()}
     <div class="tiles">${Object.entries(SECTIONS).map(([k, s]) => `
       <a class="tile fade" href="#${k}" style="--c:${s.c};--g:${s.glow}"><div class="ic">${s.icon}</div><b>${s.label}</b><span class="cnt">${toAr(count(k))}</span></a>`).join('')}
     </div>
@@ -213,6 +227,7 @@ function section(k){
   const subs = subjectsFor(D, sel.grade || (sel.stage ? STAGE_P + sel.stage : ''));
   return `
     ${head(k, s.label + ` <span class="muted" style="font-weight:700">· ${esc(selLabel())}</span>`)}
+    ${liveVisitor() && hasSub && (sel.grade ? !canSee(sel.grade) : !MEMS.length) ? `<div class="notice">لرؤية ${s.label} صف ابنك ادخل برمز الصف. <a class="btn sm pri" href="#join${sel.grade ? '-' + chKeyOf(sel.grade) : ''}">🔑 دخول برمز الصف</a></div>` : ''}
     <div class="filters">
       <input id="q" placeholder="ابحث في ${s.label}…" value="${esc(st.q || '')}" aria-label="بحث">
       ${hasSub ? `<select id="sub" aria-label="المادة"><option value="">كل المواد</option>${subs.map(x => `<option${st.sub === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>` : '<span></span>'}
@@ -450,6 +465,12 @@ function whenShort(it){
   return d.toLocaleDateString('ar-IQ', {day:'numeric', month:'short'});
 }
 function chRow(key){
+  if(key !== 'all' && !canSee(chGrade(key))) return `
+    <a class="card chrow locked" href="#join-${key}" style="--g:${G('channels')}">
+      ${chAvatar(key)}
+      <div class="cbody"><div class="r1"><b>${esc(chName(key))}</b><span aria-label="مقفلة">🔒</span></div>
+        <div class="r2"><span class="muted prev">اضغط واكتب رمز الصف للانضمام</span></div></div>
+    </a>`;
   const its = chItems(key), last = its[its.length - 1], un = unreadOf(key, its);
   return `
     <a class="card chrow${un ? ' unread' : ''}" href="#ch-${key}" style="--g:${G('channels')}">
@@ -467,6 +488,7 @@ function channelsView(){
   return `
     ${head('channels', 'القنوات')}
     <p class="muted" style="margin-top:-6px">لكل صف قناة تجمع كل ما يُنشر له بالترتيب، مثل قنوات تلكرام. تابع قناة صف ابنك لتظهر في أعلى القائمة.</p>
+    ${liveVisitor() ? `<a class="btn pri" href="#join" style="margin:4px 0 6px">🔑 دخول صف ابني برمز الصف</a>` : ''}
     ${fol.length ? `<h3 style="margin-top:18px">⭐ قنواتي</h3><div class="list">${fol.map(chRow).join('')}</div>` : ''}
     <h3 style="margin-top:18px">🏫 المدرسة</h3><div class="list">${chRow('all')}</div>
     ${stages.map(s => `<h3 style="margin-top:18px">المرحلة ${esc(s.name)}</h3><div class="list">${s.grades.map(g => chRow(chKeyOf(g))).join('')}</div>`).join('')}`;
@@ -484,7 +506,7 @@ function msgHTML(it, key){
   else if(k === 'homework') act = linkBtn(it.link, it.examId ? '✏️ حلّ الواجب الآن' : 'فتح الرابط', 'pri sm');
   else act = linkBtn(it.link, 'فتح الرابط', 'sm');
   const t = tsOf(it), time = it.createdAt ? new Date(t).toLocaleTimeString('ar-IQ', {hour:'numeric', minute:'2-digit'}) : '';
-  const mine = window.P && it._k === 'channels' && (P.role === 'owner' || it.authorUid === P.uid);
+  const mine = window.P && (it._k === 'channels' || it._k === 'homework') && (P.role === 'owner' || it.authorUid === P.uid);
   return `
     <div class="msg${it.pinned ? ' pinned' : ''}" id="m-${esc(it.id)}">
       ${TYPE_LABEL[k] ? `<div class="mt" style="--g:${G(k)}">${TYPE_LABEL[k]}</div>` : ''}
@@ -512,33 +534,43 @@ function pinHTML(key){
 function channelView(key){
   theme('channels');
   if(key !== 'all' && !chGrade(key)) return emptyBox('القناة غير موجودة.');
-  const fol = follows().includes(key), n = chItems(key).length;
-  const staff = window.P;
+  if(key !== 'all' && !canSee(chGrade(key))) return joinView(key);
+  const fol = follows().includes(key), n = chItems(key).length, g = chGrade(key), Pr = window.P;
+  const canCh = Pr && Pr.role === 'owner';
+  const canHw = Pr && key !== 'all' && (Pr.role === 'owner' || !(Pr.gradesList || []).length || Pr.gradesList.includes(g));
+  const pm = liveVisitor() && OWNER && key !== 'all';
   return `
     <div class="chhead">
       <a class="btn sm" href="#channels" aria-label="كل القنوات">→</a>
       ${chAvatar(key)}
       <div style="flex:1;min-width:0"><b style="color:#fff;font-size:18px">${esc(chName(key))}</b><div class="muted">${toAr(n)} منشوراً</div></div>
+      ${pm ? '<button class="sm" id="pm">💬 مراسلة خاصة</button>' : ''}
       <button class="sm ${fol ? '' : 'pri'}" id="fol">${fol ? '✔ متابَعة' : '+ متابعة'}</button>
     </div>
     <div id="pin">${pinHTML(key)}</div>
     <div class="feed" id="feed">${feedHTML(key)}</div>
-    ${staff ? `
-    <form class="composer" id="cmp">
-      <textarea id="cbody" maxlength="6000" placeholder="اكتب منشوراً في ${esc(chName(key))}…" aria-label="نص المنشور"></textarea>
+    ${canCh || canHw ? `
+    <form class="composer" id="cmp" data-type="${canCh ? 'channels' : 'homework'}">
+      ${canCh && canHw ? `<div class="seg" id="ctype"><button type="button" data-ct="channels" class="on">📣 منشور في القناة</button><button type="button" data-ct="homework">✏️ واجب</button></div>` : ''}
+      <div id="hwf" class="grid" ${canCh ? 'hidden' : ''}>
+        <div class="full"><label for="ctitle">عنوان الواجب</label><input id="ctitle" maxlength="200"></div>
+        <div><label for="csub">المادة</label><select id="csub">${subjectsFor(D, g).map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
+        <div><label for="cdue">آخر موعد للتسليم</label><input id="cdue" type="date"></div>
+      </div>
+      <textarea id="cbody" maxlength="6000" placeholder="${canCh ? 'اكتب منشوراً في ' + esc(chName(key)) + '…' : 'تفاصيل الواجب…'}" aria-label="النص"></textarea>
       <div class="row">
         <input id="clink" dir="ltr" placeholder="رابط (اختياري)" aria-label="رابط" style="flex:1;min-width:140px">
         <input id="cimg" dir="ltr" placeholder="رابط صورة (اختياري)" aria-label="رابط صورة" style="flex:1;min-width:140px">
-        <label class="check" style="display:flex;gap:6px;align-items:center;color:var(--tx)"><input type="checkbox" id="cpin"> تثبيت</label>
+        <label class="check" id="cpinw" style="display:${canCh ? 'flex' : 'none'};gap:6px;align-items:center;color:var(--tx)"><input type="checkbox" id="cpin"> تثبيت</label>
         <button class="pri" id="csend">نشر</button>
       </div>
       <div id="cerr"></div>
     </form>` : ''}`;
 }
 function wireChannel(key){
-  const feed = $('#feed'); if(!feed) return;
+  const feed = $('#feed'); if(!feed){ if($('#jf')) wireJoin(); return; }
   feed.scrollTop = feed.scrollHeight;
-  const its = chItems(key); if(its.length) markSeen(key, tsOf(its[its.length - 1]));
+  const its = chItems(key), g = chGrade(key); if(its.length) markSeen(key, tsOf(its[its.length - 1]));
   $('#fol').onclick = () => { const f = follows(); store.set('wx-follow', f.includes(key) ? f.filter(x => x !== key) : [key, ...f]); route(); };
   $('#pin').onclick = e => { const a = e.target.closest('[data-pin]'); if(!a) return; e.preventDefault(); const m = $('#m-' + a.dataset.pin); if(m){ m.scrollIntoView({block:'center'}); m.classList.add('flash'); setTimeout(() => m.classList.remove('flash'), 1500); } };
   feed.onclick = async e => {
@@ -546,19 +578,112 @@ function wireChannel(key){
     if(!await ask('حذف هذا المنشور من القناة؟', 'حذف')) return;
     try{ await F.deleteDoc(F.doc(db, 'posts', b.dataset.delmsg)); toast('حُذف'); }catch(x){ toast(errText(x)); }
   };
-  if($('#cmp')) $('#cmp').onsubmit = async e => {
+  if($('#pm')) $('#pm').onclick = () => privateMsg(g);
+  const form = $('#cmp'); if(!form) return;
+  if($('#ctype')) $('#ctype').onclick = e => {
+    const b = e.target.closest('[data-ct]'); if(!b) return;
+    form.dataset.type = b.dataset.ct; $$('#ctype button').forEach(x => x.classList.toggle('on', x === b));
+    const hw = b.dataset.ct === 'homework';
+    $('#hwf').hidden = !hw; $('#cpinw').style.display = hw ? 'none' : 'flex';
+    $('#cbody').placeholder = hw ? 'تفاصيل الواجب…' : 'اكتب منشوراً في ' + chName(key) + '…';
+  };
+  form.onsubmit = async e => {
     e.preventDefault();
-    const body = $('#cbody').value.trim(), link = $('#clink').value.trim(), image = $('#cimg').value.trim();
-    if(!body) return;
+    const hw = form.dataset.type === 'homework', v = id => $(id).value.trim();
+    const body = v('#cbody'), link = v('#clink'), image = v('#cimg');
+    if(hw && !v('#ctitle')) return $('#cerr').innerHTML = '<div class="alert">اكتب عنوان الواجب.</div>';
+    if(!body) return $('#cerr').innerHTML = '<div class="alert">اكتب النص.</div>';
     if(/\s/.test(link + image)) return $('#cerr').innerHTML = '<div class="alert">الرابط يحتوي على مسافات.</div>';
     const b = $('#csend'); b.disabled = true;
+    const base = {body, link, image, grade: g, public: isPublicGrade(g), date: todayISO(), authorUid: P.uid, authorName: P.name, createdAt: now(), updatedAt: now()};
     try{
-      await F.setDoc(F.doc(F.collection(db, 'posts')), {type: 'channels', title: '', body, link, image, pinned: $('#cpin').checked,
-        grade: chGrade(key), date: todayISO(), authorUid: P.uid, authorName: P.name, createdAt: now(), updatedAt: now()});
-      $('#cbody').value = ''; $('#clink').value = ''; $('#cimg').value = ''; $('#cpin').checked = false; $('#cerr').innerHTML = '';
+      await F.setDoc(F.doc(F.collection(db, 'posts')), hw
+        ? {...base, type: 'homework', title: v('#ctitle'), subject: $('#csub').value, due: $('#cdue').value}
+        : {...base, type: 'channels', title: '', pinned: $('#cpin').checked});
+      ['#cbody', '#clink', '#cimg', '#ctitle', '#cdue'].forEach(id => { if($(id)) $(id).value = ''; });
+      if($('#cpin')) $('#cpin').checked = false; $('#cerr').innerHTML = '';
+      toast(hw ? 'نُشر الواجب' : 'نُشر في القناة');
     }catch(x){ $('#cerr').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
     b.disabled = false;
   };
+}
+/* الدخول برمز الصف */
+function joinView(key){
+  theme('channels');
+  const g = key && key !== 'all' ? chGrade(key) : '';
+  if(!liveVisitor()) return emptyBox('الدخول برمز الصف يعمل بعد ربط المنصة بقاعدة البيانات.');
+  return `
+    <div class="panel joinbox fade">
+      <div class="joinic" aria-hidden="true">🔑</div>
+      <h2>${g ? 'قناة الصف ' + esc(g) : 'الدخول إلى صف ابنك'}</h2>
+      <p class="muted">اكتب رمز الصف الذي أرسلته لك المدرسة، فتفتح لك قناة الصف وواجباته وامتحاناته ودروسه. يُحفظ دخولك على هذا الجهاز.</p>
+      <form id="jf" class="grid" style="grid-template-columns:1fr">
+        <div><label for="jc">رمز الصف</label><input id="jc" class="codein" dir="ltr" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="······" required></div>
+        <div><label for="jp">اسم ولي الأمر</label><input id="jp" maxlength="80" autocomplete="name" required></div>
+        <div><label for="js">اسم التلميذ أو الطالب</label><input id="js" maxlength="80" required></div>
+        <div id="jerr"></div>
+        <button class="pri" id="jgo">دخول الصف</button>
+      </form>
+    </div>`;
+}
+function wireJoin(){
+  $('#jc').oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  $('#jf').onsubmit = async e => {
+    e.preventDefault();
+    const b = $('#jgo'); b.disabled = true; b.textContent = 'جارٍ التحقق…';
+    try{
+      const grade = await joinClass($('#jc').value, $('#jp').value, $('#js').value);
+      MEMS = await myMemberships(); await startPosts();
+      const key = chKeyOf(grade);
+      store.set('wx-follow', [key, ...follows().filter(x => x !== key)]);
+      sel = {stage: stageOf(D, grade), grade}; store.set('wx2-sel', sel); drawSel();
+      toast('أهلاً بك في قناة الصف ' + grade);
+      if(location.hash === '#ch-' + key) route(); else location.hash = 'ch-' + key;
+    }catch(x){ b.disabled = false; b.textContent = 'دخول الصف'; $('#jerr').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+  };
+}
+/* دردشة خاصة مع مشرف القنوات من داخل القناة */
+function privateMsg(g){
+  const m = MEMS.find(x => x.grade === g) || {};
+  const ownerName = ((D.staff || []).find(s => s.id === OWNER) || {}).name || 'مشرف القنوات';
+  const w = document.createElement('div'); w.className = 'modal';
+  w.innerHTML = `<div class="mbox" role="dialog" aria-modal="true" aria-label="مراسلة خاصة">
+    <h3 style="margin-top:0">💬 رسالة خاصة إلى ${esc(ownerName)}</h3>
+    <p class="muted">لا يراها أحد في القناة. ستحصل على رمز محادثة تتابع به الرد.</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div><label for="pmp">اسم ولي الأمر</label><input id="pmp" maxlength="80" value="${esc(m.parentName || '')}"></div>
+      <div><label for="pms">اسم التلميذ</label><input id="pms" maxlength="80" value="${esc(m.studentName || '')}"></div>
+      <div class="full"><label for="pmt">الرسالة</label><textarea id="pmt" maxlength="3000"></textarea></div>
+    </div>
+    <div id="pme"></div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="pmsend">إرسال</button><button id="pmx">إلغاء</button></div></div>`;
+  document.body.appendChild(w); $('#pmt').focus();
+  $('#pmx').onclick = () => w.remove();
+  $('#pmsend').onclick = async () => {
+    const v = id => $(id).value.trim();
+    if(!v('#pmp') || !v('#pms') || !v('#pmt')) return $('#pme').innerHTML = '<div class="alert">اكتب الاسمين والرسالة.</div>';
+    $('#pmsend').disabled = true;
+    try{
+      const u = await ensureAnon(), t = F.doc(F.collection(db, 'threads')), b = F.writeBatch(db);
+      b.set(t, {to: OWNER, toName: ownerName, parentUid: u.uid, parentName: v('#pmp'), studentName: v('#pms'), grade: g, section: '',
+        createdAt: now(), updatedAt: now(), lastFrom: 'parent', unreadStaff: true, unreadParent: false, status: 'open'});
+      b.set(F.doc(F.collection(db, 'threads', t.id, 'msgs')), {from: 'parent', text: v('#pmt'), at: now(), by: u.uid, byName: v('#pmp')});
+      await b.commit(); keepThread(t.id); w.remove(); location.hash = 'chat-' + t.id;
+    }catch(x){ $('#pmsend').disabled = false; $('#pme').innerHTML = `<div class="alert">${esc(errText(x))}</div>`; }
+  };
+}
+/* صفوفي في الرئيسية */
+function homeClasses(){
+  if(liveVisitor()){
+    const mine = MEMS.map(m => chKeyOf(m.grade)).filter(k => k !== '-1');
+    if(!mine.length) return `
+      <a class="card joincta fade" href="#join" style="--g:${G('channels')}">
+        <div class="joinic" aria-hidden="true">🔑</div>
+        <div><b>ادخل صف ابنك برمز الصف</b><div class="muted">تفتح لك قناة الصف وواجباته وامتحاناته ودروسه، ودردشة خاصة مع الإدارة.</div></div>
+      </a>`;
+    return `<h3 style="margin:4px 0 8px">⭐ صفوفي</h3><div class="list" style="margin-bottom:8px">${mine.map(chRow).join('')}</div><a class="btn sm" href="#join" style="margin-bottom:14px">+ إضافة صف آخر</a>`;
+  }
+  return sel.grade ? `<div class="list" style="margin-bottom:12px">${chRow(chKeyOf(sel.grade))}</div>` : '';
 }
 /* تحديث القنوات مباشرة عند نشر جديد (مع قاعدة البيانات) */
 function refreshLive(){
@@ -576,13 +701,14 @@ function route(){
   /* روابط بسيطة مثل #homework و #lesson-l1 (والصيغة القديمة #/homework ما زالت تعمل) */
   const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   const [k, id] = h.startsWith('lesson') ? ['lesson', h.replace(/^lesson[-/]/, '')] : [h.split('/')[0], ''];
-  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons') || (k.startsWith('chat-') && a.dataset.k === 'contact') || (k.startsWith('ch-') && a.dataset.k === 'channels')));
+  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === (k || 'home') || (k === 'lesson' && a.dataset.k === 'lessons') || (k.startsWith('chat-') && a.dataset.k === 'contact') || ((k.startsWith('ch-') || k.startsWith('join')) && a.dataset.k === 'channels')));
   const v = $('#view');
   if(chatUnsub){ chatUnsub(); chatUnsub = null; }
   if(k === 'contact'){ if(LIVE && !D.loadError){ v.innerHTML = contactLive(); wireContactLive(); } else { v.innerHTML = contact(); wireContact(); } }
   else if(LIVE && k.startsWith('chat-')){ v.innerHTML = chatView(k.slice(5)); wireChat(k.slice(5)); }
   else if(k === 'lesson') v.innerHTML = lesson(id);
   else if(k === 'channels') v.innerHTML = channelsView();
+  else if(k === 'join' || k.startsWith('join-')){ v.innerHTML = joinView(k.slice(5)); if($('#jf')) wireJoin(); }
   else if(k.startsWith('ch-')){ v.innerHTML = channelView(k.slice(3)); wireChannel(k.slice(3)); }
   else if(CARD[k]){ v.innerHTML = section(k); fillSection(k); }
   else v.innerHTML = home();
@@ -590,6 +716,7 @@ function route(){
   $('#nav a.on')?.scrollIntoView({inline:'center', block:'nearest'});
 }
 window.addEventListener('hashchange', () => { route(); window.scrollTo({top: $('.topnav').offsetTop, behavior:'smooth'}); });
+booted = true;
 route();
 </script>
 </body>

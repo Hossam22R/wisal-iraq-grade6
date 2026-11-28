@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0B1220">
 <title>لوحة إدارة البوابة</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/fonts/cairo.css">
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/common.js"></script>
 <script src="data/content.js"></script>
@@ -40,7 +40,7 @@ ol li{margin:4px 0;line-height:1.9}
 <footer>© مؤسسة وصال التعليمية · إعداد: حسام الجنابي</footer>
 
 <script type="module">
-import {LIVE, init, F, A, db, auth, ap, toEmail, userName, profile, docs, now, tsText, errText} from './assets/db.js';
+import {LIVE, init, F, A, db, auth, ap, toEmail, userName, profile, docs, now, tsText, errText, newCode, isPublicGrade} from './assets/db.js';
 
 const view = $('#view');
 const err = (t, el='#ferr') => { const b = $(el); if(b) b.innerHTML = `<div class="alert">${esc(t)}</div>`; };
@@ -74,7 +74,7 @@ async function loadSettings(){
   SITE = s.exists() ? s.data() : {school: window.SCHOOL.school, stages: window.SCHOOL.stages};
 }
 function header(){
-  $('#who').innerHTML = ME ? `<span class="tag">${esc(ME.name)}</span><span class="pill ${ME.role === 'owner' ? 'info' : 'on'}">${ME.role === 'owner' ? 'المالك — كل الصلاحيات' : 'مشرف نشر'}</span><button class="sm" id="out">تسجيل الخروج</button>` : '';
+  $('#who').innerHTML = ME ? `<span class="tag">${esc(ME.name)}</span><span class="pill ${ME.role === 'owner' ? 'info' : 'on'}">${ME.role === 'owner' ? 'المالك — مشرف القنوات' : 'مشرف واجبات'}</span><button class="sm" id="out">تسجيل الخروج</button>` : '';
   if($('#out')) $('#out').onclick = async () => { await A.signOut(auth); location.reload(); };
 }
 function loginView(){
@@ -138,7 +138,9 @@ function ownerSetupView(){
 
 /* ============ اللوحة ============ */
 const TABS = () => ({
-  posts: '📰 المنشورات', tests: '📝 الاختبارات والنتائج', inbox: '💬 الرسائل',
+  posts: ME.role === 'owner' ? '📰 المنشورات' : '✏️ الواجبات', tests: ME.role === 'owner' ? '📝 الاختبارات والنتائج' : '📝 الواجبات الإلكترونية',
+  ...(ME.role === 'owner' || ME.inbox ? {inbox: '💬 الرسائل'} : {}),
+  ...(ME.role === 'owner' ? {classes: '🔑 الصفوف والرموز'} : {}),
   ...(ME.role === 'owner' ? {accounts: '👥 الحسابات والصلاحيات', school: '⚙️ المدرسة والمراحل'} : {}),
   me: '👤 حسابي'
 });
@@ -149,11 +151,13 @@ function dashboard(){
   $('#nav').innerHTML = Object.entries(TABS()).map(([k, l]) => `<a href="#" data-k="${k}" class="${k === tab ? 'on' : ''}">${l}</a>`).join('');
   $('#nav').onclick = e => { const a = e.target.closest('[data-k]'); if(!a) return; e.preventDefault(); tab = a.dataset.k; store.set('wx3-tab', tab); dashboard(); };
   stopLive();
-  ({posts: postsTab, tests: testsTab, inbox: inboxTab, accounts: accountsTab, school: schoolTab, me: meTab})[tab]();
+  ({posts: postsTab, tests: testsTab, inbox: inboxTab, classes: classesTab, accounts: accountsTab, school: schoolTab, me: meTab})[tab]();
 }
 let unsub = null;
 const stopLive = () => { if(unsub){ unsub(); unsub = null; } };
-const D = () => ({...SITE, stages: SITE.stages});
+const myGrades = () => ME.role === 'owner' ? [] : (ME.gradesList || []);
+const D = () => myGrades().length ? {...SITE, stages: SITE.stages.map(s => ({...s, grades: s.grades.filter(g => myGrades().includes(g))})).filter(s => s.grades.length)} : SITE;
+const postTypes = () => ME.role === 'owner' ? Object.keys(SCHEMA) : ['homework'];
 const canEdit = it => ME.role === 'owner' || it.authorUid === ME.uid;
 
 /* ============ المنشورات ============ */
@@ -180,6 +184,7 @@ function field([k, l, type, req], v, it){
   return `<div${full}>${lab}<input id="f-${k}" type="${type === 'url' ? 'text' : type}" data-f="${k}" value="${esc(v)}" ${type === 'url' ? 'dir="ltr" placeholder="https://…"' : ''}></div>`;
 }
 async function postsTab(){
+  if(!postTypes().includes(ptype)) ptype = postTypes()[0];
   theme(ptype);
   view.innerHTML = '<div class="empty">جارٍ تحميل المنشورات…</div>';
   try{ POSTS = docs(await F.getDocs(F.query(F.collection(db, 'posts'), F.where('type', '==', ptype)))); }
@@ -191,7 +196,7 @@ function drawPosts(){
   const list = POSTS.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const schema = SCHEMA[ptype].filter(f => !(ed && ed.examId && f[0] === 'link'));
   view.innerHTML = `
-    <div class="types">${Object.keys(SCHEMA).map(k => `<button data-t="${k}" class="${k === ptype ? 'on' : ''}">${SECTIONS[k].icon} ${SECTIONS[k].label}</button>`).join('')}</div>
+    <div class="types" ${postTypes().length < 2 ? 'hidden' : ''}>${postTypes().map(k => `<button data-t="${k}" class="${k === ptype ? 'on' : ''}">${SECTIONS[k].icon} ${SECTIONS[k].label}</button>`).join('')}</div>
     <div class="bar"><h2 class="sec" style="margin:0;flex:1">${SECTIONS[ptype].icon} ${SECTIONS[ptype].label}</h2>${ed ? '' : '<button class="pri" id="add">+ إضافة</button>'}</div>
     ${['homework', 'exams'].includes(ptype) && !ed ? '<p class="muted">لإنشاء اختبار أو واجب إلكتروني يُصحَّح تلقائياً استخدم قسم «الاختبارات والنتائج»، ويظهر هنا تلقائياً.</p>' : ''}
     ${ed ? `<div class="form" id="form">
@@ -229,6 +234,7 @@ function drawPosts(){
     if(['link', 'image'].some(f => o[f] && /\s/.test(o[f]))) return err('الرابط يحتوي على مسافات، تأكد من نسخه كاملاً.');
     const b = $('#ok'); busy(b, true);
     try{
+      if(o.grade === undefined) o.grade = ''; o.public = isPublicGrade(o.grade);
       if(editing.id) await F.updateDoc(F.doc(db, 'posts', editing.id), {...o, updatedAt: now()});
       else await F.setDoc(F.doc(F.collection(db, 'posts')), {title: '', ...o, type: ptype, authorUid: ME.uid, authorName: ME.name, createdAt: now(), updatedAt: now()});
       editing = null; toast('تم النشر'); postsTab();
@@ -255,7 +261,7 @@ async function testsTab(){
   }catch(x){ view.innerHTML = `<div class="alert">${esc(errText(x))}</div>`; return; }
   view.innerHTML = `
     <div class="bar"><h2 class="sec" style="margin:0;flex:1">📝 الاختبارات والواجبات الإلكترونية</h2><a class="btn pri" href="exams.html?new=1">+ اختبار أو واجب جديد</a></div>
-    <p class="muted">يُنشأ الاختبار في صفحة المنشئ ثم يُنشر بزر «نشر على المنصة»، فيظهر في البوابة تحت الامتحانات أو الواجبات، وتصل إجابات التلاميذ إلى هنا.</p>
+    <p class="muted">${ME.role === 'owner' ? 'يُنشأ الاختبار في صفحة المنشئ ثم يُنشر بزر «نشر على المنصة»، فيظهر في قناة الصف وفي البوابة، وتصل إجابات التلاميذ إلى هنا.' : 'تستطيع إنشاء واجبات إلكترونية تُصحَّح تلقائياً لصفوفك، وتظهر في قناة الصف، وتصل إجابات التلاميذ إلى هنا.'}</p>
     <div class="list">${list.map(x => `
       <div class="card item" style="--g:${SECTIONS[x.type === 'homework' ? 'homework' : 'exams'].glow}">
         <div><span class="t">${esc(x.title)}</span>
@@ -415,6 +421,71 @@ function threadView(t){
   $('#st').onclick = async () => { t.status = t.status === 'closed' ? 'open' : 'closed'; try{ await F.updateDoc(ref, {status: t.status}); threadView(t); }catch(e){ err(errText(e)); } };
 }
 
+
+/* ============ الصفوف والرموز (المالك) ============ */
+async function classesTab(){
+  theme('channels');
+  view.innerHTML = '<div class="empty">جارٍ التحميل…</div>';
+  let codes, mems;
+  try{
+    codes = docs(await F.getDocs(F.collection(db, 'joinCodes')));
+    mems = docs(await F.getDocs(F.collection(db, 'memberships')));
+  }catch(e){ view.innerHTML = `<div class="alert">${esc(errText(e))}</div>`; return; }
+  const codeOf = g => codes.filter(c => c.grade === g).sort((a, b) => ((b.createdAt && b.createdAt.toMillis()) || 0) - ((a.createdAt && a.createdAt.toMillis()) || 0))[0];
+  const portal = new URL('index.html#join', location.href).href;
+  view.innerHTML = `
+    <h2 class="sec" style="margin-top:0">🔑 الصفوف والرموز</h2>
+    <p class="muted" style="line-height:1.9">لكل صف رمز يدخل به أولياء الأمور إلى قناة صف أبنائهم وواجباته وامتحاناته ودروسه. أرسل الرمز لأولياء أمور الصف فقط.
+      «رمز جديد» يوقف الرمز القديم عن إدخال أعضاء جدد، ويبقى الأعضاء الحاليون، ويمكنك إخراجهم.</p>
+    <div class="kpis"><div class="kpi"><b>${toAr(mems.length)}</b><span>عضوية في كل الصفوف</span></div><div class="kpi"><b>${toAr(SITE.stages.flatMap(s => s.grades).filter(codeOf).length)}</b><span>صف له رمز</span></div></div>
+    ${SITE.stages.map(st => `
+      <h3 style="margin-top:18px">المرحلة ${esc(st.name)}</h3>
+      <div class="list">${st.grades.map(g => { const c = codeOf(g), m = mems.filter(x => x.grade === g); return `
+        <div class="card item" style="--g:${SECTIONS.channels.glow}">
+          <div><span class="t">${esc(g)}</span>
+            <div class="row" style="margin-top:6px">${c ? `<span class="codebig">${esc(c.id)}</span>` : '<span class="muted">لا يوجد رمز بعد</span>'}<span class="tag">${toAr(m.length)} عضو</span></div></div>
+          <div class="row">
+            ${c ? `<button class="sm pri" data-inv="${esc(g)}">نسخ رسالة الدعوة</button>` : ''}
+            <button class="sm ${c ? '' : 'pri'}" data-new="${esc(g)}">${c ? 'رمز جديد' : 'إنشاء رمز'}</button>
+            <button class="sm" data-mem="${esc(g)}" ${m.length ? '' : 'disabled'}>الأعضاء</button>
+          </div>
+        </div>`; }).join('')}</div>`).join('')}
+    <div id="members"></div>`;
+  $$('[data-new]').forEach(b => b.onclick = async () => {
+    const g = b.dataset.new, old = codes.filter(c => c.grade === g);
+    if(old.length && !await ask(`إنشاء رمز جديد لصف ${g}؟ الرمز القديم لن يُدخل أحداً بعد الآن.`, 'رمز جديد')) return;
+    try{
+      let code; do{ code = newCode(); }while((await F.getDoc(F.doc(db, 'joinCodes', code))).exists());
+      const w = F.writeBatch(db);
+      old.forEach(c => w.delete(F.doc(db, 'joinCodes', c.id)));
+      w.set(F.doc(db, 'joinCodes', code), {grade: g, createdAt: now()});
+      await w.commit(); toast('رمز صف ' + g + ': ' + code); classesTab();
+    }catch(e){ toast(errText(e)); }
+  });
+  $$('[data-inv]').forEach(b => b.onclick = async () => {
+    const g = b.dataset.inv, c = codeOf(g);
+    const text = `السلام عليكم، أولياء أمور الصف ${g} في ${SITE.school.name}\nقناة الصف وواجباته وامتحاناته صارت على بوابة المدرسة.\nرمز الصف: ${c.id}\nالرابط: ${portal}\nيُرجى عدم مشاركة الرمز خارج أولياء أمور الصف.`;
+    try{ await navigator.clipboard.writeText(text); toast('نُسخت رسالة الدعوة'); }catch(_){ await ask(text, 'تم'); }
+  });
+  $$('[data-mem]').forEach(b => b.onclick = () => {
+    const g = b.dataset.mem, m = mems.filter(x => x.grade === g).sort((a, b) => (a.studentName || '').localeCompare(b.studentName || '', 'ar'));
+    $('#members').innerHTML = `
+      <h2 class="sec">أعضاء ${esc(g)}</h2>
+      <div class="row" style="margin-bottom:10px"><button class="sm warn" id="kickall">إخراج جميع الأعضاء</button></div>
+      <div class="tblwrap"><table class="tbl"><thead><tr><th>#</th><th>التلميذ</th><th>ولي الأمر</th><th>وقت الدخول</th><th></th></tr></thead>
+      <tbody>${m.map((x, i) => `<tr><td>${toAr(i + 1)}</td><td class="wrap">${esc(x.studentName)}</td><td class="wrap">${esc(x.parentName)}</td><td>${esc(tsText(x.at))}</td><td><button class="sm warn" data-kick="${esc(x.id)}">إخراج</button></td></tr>`).join('')}</tbody></table></div>`;
+    $('#members').scrollIntoView({block:'start'});
+    $$('[data-kick]').forEach(k => k.onclick = async () => {
+      if(!await ask('إخراج هذا العضو من الصف؟ لن يرى محتوى الصف حتى يدخل برمز صالح.', 'إخراج')) return;
+      try{ await F.deleteDoc(F.doc(db, 'memberships', k.dataset.kick)); toast('أُخرج'); classesTab(); }catch(e){ toast(errText(e)); }
+    });
+    $('#kickall').onclick = async () => {
+      if(!await ask(`إخراج ${toAr(m.length)} عضواً من ${g}؟ أنشئ رمزاً جديداً بعدها حتى لا يعودوا بالرمز القديم.`, 'إخراج الجميع')) return;
+      try{ for(let i = 0; i < m.length; i += 400){ const w = F.writeBatch(db); m.slice(i, i + 400).forEach(x => w.delete(F.doc(db, 'memberships', x.id))); await w.commit(); } toast('أُخرج الجميع'); classesTab(); }catch(e){ toast(errText(e)); }
+    };
+  });
+}
+
 /* ============ الحسابات والصلاحيات (المالك) ============ */
 const ROLES = ['مدير المرحلة الابتدائية', 'مدير المرحلة الثانوية', 'المشرف العام', 'معاون المدير', 'معلم', 'معلمة', 'مدرّس', 'مدرّسة', 'المرشد التربوي', 'الإدارة'];
 async function accountsTab(){
@@ -428,7 +499,7 @@ async function accountsTab(){
     <div class="panel" style="margin-bottom:16px">
       <h3>الصلاحيات</h3>
       <p class="muted" style="line-height:1.9"><b>المالك</b>: كل شيء، ومنها إنشاء الحسابات وتعطيلها وتعديل بيانات المدرسة وقراءة كل الرسائل.<br>
-      <b>مشرف النشر</b>: ينشر التبليغات والواجبات والامتحانات والدروس والمناسبات والنشاطات، ويعدّل ويحذف ما نشره هو فقط، ويرى نتائج اختباراته، ويقرأ الرسائل الموجهة إليه إن فُعّل له استقبالها. لا يستطيع تعديل الإعدادات ولا الحسابات.</p>
+      <b>مشرف الواجبات</b>: يرسل الواجبات فقط (العادية والإلكترونية) إلى صفوفه المحددة، أو إلى كل الصفوف إن لم تحدد له صفوفاً، ويعدّل ويحذف ما أرسله هو فقط، ويرى نتائج واجباته. لا ينشر في القنوات ولا التبليغات، ولا يرى الرموز ولا الحسابات ولا الإعدادات.</p>
     </div>
     <div class="form">
       <h3>+ إضافة مشرف نشر</h3>
@@ -439,16 +510,17 @@ async function accountsTab(){
         <div><label for="p">كلمة السر المؤقتة (٨ أحرف على الأقل)</label><input id="p" dir="ltr" minlength="8" required></div>
         <div><label for="sg">المرحلة</label><select id="sg">${stageOpts('')}</select></div>
         <div><label for="sb">المواد (اختياري)</label><input id="sb"></div>
-        <div class="full"><label class="check"><input type="checkbox" id="ib"> يستقبل رسائل أولياء الأمور</label></div>
+        <div class="full"><label>الصفوف التي يرسل لها الواجبات (اتركها كلها فارغة = كل الصفوف)</label><div class="row" id="gl">${SITE.stages.flatMap(s => s.grades).map(g => `<label class="check" style="font-size:14px"><input type="checkbox" value="${esc(g)}" ${([] || []).includes(g) ? 'checked' : ''}> ${esc(g)}</label>`).join('')}</div></div>
+        <div class="full"><label class="check"><input type="checkbox" id="ib"> يستقبل رسائل أولياء الأمور أيضاً</label></div>
         <div id="ferr" class="full"></div>
         <div class="full"><button class="pri" id="mk">إنشاء الحساب</button></div>
       </form>
     </div>
     <div class="tblwrap"><table class="tbl">
-      <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصفة</th><th>المرحلة</th><th>الصلاحية</th><th>يستقبل الرسائل</th><th>الحالة</th><th></th></tr></thead>
+      <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصفة</th><th>المرحلة</th><th>الصلاحية</th><th>الصفوف</th><th>يستقبل الرسائل</th><th>الحالة</th><th></th></tr></thead>
       <tbody>${users.sort((a, b) => (a.role === 'owner' ? -1 : 0) - (b.role === 'owner' ? -1 : 0)).map(u => `<tr>
         <td class="wrap">${esc(u.name)}</td><td dir="ltr">${esc(u.username || '')}</td><td>${esc(u.title || '')}</td><td>${esc(u.stage || 'الكل')}</td>
-        <td><span class="pill ${u.role === 'owner' ? 'info' : 'on'}">${u.role === 'owner' ? 'المالك' : 'مشرف نشر'}</span></td>
+        <td><span class="pill ${u.role === 'owner' ? 'info' : 'on'}">${u.role === 'owner' ? 'المالك' : 'مشرف واجبات'}</span></td><td class="wrap">${u.role === 'owner' ? 'الكل' : (u.gradesList || []).length ? esc(u.gradesList.join('، ')) : 'كل الصفوف'}</td>
         <td><button class="sm" data-ib="${u.id}">${u.inbox ? '✔ نعم' : 'لا'}</button></td>
         <td>${u.role === 'owner' ? '<span class="pill on">فعّال</span>' : `<button class="sm ${u.active ? '' : 'warn'}" data-ac="${u.id}">${u.active ? 'فعّال — تعطيل' : 'معطّل — تفعيل'}</button>`}</td>
         <td><button class="sm" data-ed="${u.id}">تعديل</button></td>
@@ -466,7 +538,7 @@ async function accountsTab(){
       if(emu) A.connectAuthEmulator(sa, 'http://127.0.0.1:9099', {disableWarnings: true});
       const cred = await A.createUserWithEmailAndPassword(sa, toEmail($('#u').value), $('#p').value);
       await A.signOut(sa);
-      const u = {id: cred.user.uid, name: $('#n').value.trim(), title: $('#t').value, username: userName(cred.user.email), role: 'supervisor', active: true, inbox: $('#ib').checked, stage: $('#sg').value, subjects: $('#sb').value.trim(), grades: ''};
+      const u = {id: cred.user.uid, name: $('#n').value.trim(), title: $('#t').value, username: userName(cred.user.email), role: 'supervisor', active: true, inbox: $('#ib').checked, gradesList: $$('#gl input:checked').map(x => x.value), stage: $('#sg').value, subjects: $('#sb').value.trim(), grades: ''};
       const w = F.writeBatch(db);
       const {id, ...data} = u;
       w.set(F.doc(db, 'users', id), {...data, createdAt: now(), createdBy: ME.uid});
@@ -494,13 +566,15 @@ async function accountsTab(){
       <div><label for="en">الاسم</label><input id="en" value="${esc(u.name)}"></div>
       <div><label for="et">الصفة</label><input id="et" list="rl" value="${esc(u.title || '')}"><datalist id="rl">${ROLES.map(r => `<option value="${r}">`).join('')}</datalist></div>
       <div><label for="es">المرحلة</label><select id="es">${stageOpts(u.stage)}</select></div>
-      <div><label for="eb">المواد</label><input id="eb" value="${esc(u.subjects || '')}"></div></div>
+      <div><label for="eb">المواد</label><input id="eb" value="${esc(u.subjects || '')}"></div>
+      ${u.role === 'owner' ? '' : `<div class="full"><label>الصفوف التي يرسل لها الواجبات (اتركها كلها فارغة = كل الصفوف)</label><div class="row" id="egl">${SITE.stages.flatMap(s => s.grades).map(g => `<label class="check" style="font-size:14px"><input type="checkbox" value="${esc(g)}" ${(u.gradesList || []).includes(g) ? 'checked' : ''}> ${esc(g)}</label>`).join('')}</div></div>`}</div>
       <div class="row" style="margin-top:12px"><button class="pri" id="esv">حفظ</button><button id="ecl">إلغاء</button></div></div>`;
     document.body.appendChild(box);
     $('#ecl').onclick = () => box.remove();
     $('#esv').onclick = async () => {
       Object.assign(u, {name: $('#en').value.trim() || u.name, title: $('#et').value.trim(), stage: $('#es').value, subjects: $('#eb').value.trim()});
-      try{ const w = F.writeBatch(db); w.update(F.doc(db, 'users', u.id), {name: u.name, title: u.title, stage: u.stage, subjects: u.subjects}); syncDir(w, u); await w.commit(); box.remove(); if(u.id === ME.uid) ME.name = u.name; accountsTab(); }catch(e){ toast(errText(e)); }
+      if(u.role !== 'owner') u.gradesList = $$('#egl input:checked').map(x => x.value);
+      try{ const w = F.writeBatch(db); w.update(F.doc(db, 'users', u.id), {name: u.name, title: u.title, stage: u.stage, subjects: u.subjects, ...(u.role === 'owner' ? {} : {gradesList: u.gradesList || []})}); syncDir(w, u); await w.commit(); box.remove(); if(u.id === ME.uid) ME.name = u.name; accountsTab(); }catch(e){ toast(errText(e)); }
     };
   });
 }
@@ -542,7 +616,7 @@ function schoolTab(){
     if(!await ask(`نقل ${toAr(items.length)} عنصراً من الملف الثابت؟`, 'نقل')) return;
     try{
       const w = F.writeBatch(db);
-      items.forEach(({id, ...it}) => w.set(F.doc(F.collection(db, 'posts')), {...it, authorUid: ME.uid, authorName: ME.name, createdAt: now(), updatedAt: now()}));
+      items.forEach(({id, ...it}) => w.set(F.doc(F.collection(db, 'posts')), {title: '', ...it, grade: it.grade || '', public: isPublicGrade(it.grade || ''), authorUid: ME.uid, authorName: ME.name, createdAt: now(), updatedAt: now()}));
       await w.commit(); toast('تم النقل');
     }catch(e){ toast(errText(e)); }
   };

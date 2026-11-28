@@ -196,3 +196,15 @@ footer{border-top:1px solid var(--bd);background:rgba(0,0,0,.3);color:var(--mu);
 .daysep span{display:inline-block;padding:2px 12px;border-radius:20px;background:rgba(0,0,0,.4);border:1px solid var(--bd)}
 .composer{border:1px solid var(--bd);border-top:0;border-radius:0 0 var(--r) var(--r);padding:12px;background:rgba(11,18,32,.85);display:grid;gap:8px}
 .composer textarea{min-height:70px}
+
+/* ===== الدخول برمز الصف ===== */
+.joinbox{max-width:480px;margin:10px auto;text-align:center}
+.joinbox form{text-align:right}
+.joinic{width:64px;height:64px;margin:0 auto 6px;border-radius:20px;display:grid;place-items:center;font-size:30px;background:color-mix(in srgb,var(--glow) 14%,transparent);border:1px solid var(--glow);box-shadow:0 0 30px -8px var(--glow)}
+.codein{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:28px;font-weight:700;letter-spacing:.45em;text-align:center;padding:12px 8px 12px calc(8px + .45em);text-transform:uppercase}
+.joincta{display:flex;gap:16px;align-items:center;text-decoration:none;color:inherit;margin-bottom:14px;border-color:color-mix(in srgb,var(--glow) 55%,transparent);box-shadow:0 0 34px -14px var(--glow);padding:16px 20px 16px 16px}
+.joincta .joinic{margin:0;flex:none}
+.joincta b{color:#fff;font-size:18px}
+.chrow.locked{opacity:.72}
+.chrow.locked:hover{opacity:1}
+.codebig{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;font-weight:700;letter-spacing:.2em;color:#fff;direction:ltr;display:inline-block;padding:2px 12px;border-radius:10px;border:1px dashed var(--glow);background:rgba(0,0,0,.3)}
